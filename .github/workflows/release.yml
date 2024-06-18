@@ -27,6 +27,9 @@ jobs:
         draft: false
         prerelease: false
 
+    - name: Archive project
+      run: zip -r project.zip .
+
     - name: Upload Release Asset
       id: upload_release_asset
       uses: actions/upload-release-asset@v1
@@ -34,6 +37,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./path_to_your_file
-        asset_name: your_file_name
-        asset_content_type: application/octet-stream
+        asset_path: ./project.zip
+        asset_name: project.zip
+        asset_content_type: application/zip
