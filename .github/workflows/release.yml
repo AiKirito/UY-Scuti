@@ -16,8 +16,11 @@ jobs:
 
     - name: Remove unwanted files
       run: |
-        rm -rf .github/workflows/
-        rm -f my_workspaces/.my_workspaces
+        rm -rf my_workspaces/.my_workspaces
+        rm -rf README.md
+        rm -rd REDME_EN.md
+        rm -rf .git
+        rm -rf .github
 
     - name: Create Release
       id: create_release
