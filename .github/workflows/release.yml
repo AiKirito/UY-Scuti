@@ -28,7 +28,7 @@ jobs:
         prerelease: false
 
     - name: Archive project
-      run: zip -r UY-Sct_${{ github.ref }}.zip
+      run: zip -r UY-Sct-${{ github.ref }}.zip
 
     - name: Upload Release Asset
       id: upload_release_asset
@@ -37,6 +37,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./UY-Sct_${{ github.ref }}.zip
-        asset_name: UY-Sct_${{ github.ref }}.zip
+        asset_path: ./UY-Sct-${{ github.ref }}.zip
+        asset_name: UY-Sct-${{ github.ref }}.zip
         asset_content_type: application/zip
