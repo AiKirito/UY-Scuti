@@ -2,8 +2,12 @@ name: Release
 
 on:
   push:
-    tags:
+    branches:
       - '*'
+  workflow_dispatch:  # 添加这一行来启用手动触发
+
+env:
+  VERSION: '1.0.0'  # 自定义的版本号
 
 jobs:
   build:
@@ -12,6 +16,21 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
+
+    - name: Create tag
+      uses: actions/github-script@v5
+      with:
+        github-token: ${{ secrets.MY_TOKEN }}
+        script: |
+          const { repo: { owner, repo } } = context;
+          const version = process.env.VERSION;
+          const tag = `v${version}`;
+          await github.git.createRef({
+            owner,
+            repo,
+            ref: `refs/tags/${tag}`,
+            sha: context.sha
+          });
 
     - name: Remove workflow files
       run: rm -rf .github/workflows/
@@ -22,13 +41,13 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
       with:
-        tag_name: ${{ github.ref }}
-        release_name: UY-Sct ${{ github.ref }}
+        tag_name: ${{ env.VERSION }}
+        release_name: UY-Sct ${{ env.VERSION }}
         draft: false
         prerelease: false
 
     - name: Archive project
-      run: zip -r UY-Sct-${{ github.ref }}.zip
+      run: zip -r UY-Sct-${{ env.VERSION }}.zip
 
     - name: Upload Release Asset
       id: upload_release_asset
@@ -37,6 +56,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./UY-Sct-${{ github.ref }}.zip
-        asset_name: UY-Sct-${{ github.ref }}.zip
+        asset_path: ./UY-Sct-${{ env.VERSION }}.zip
+        asset_name: UY-Sct-${{ env.VERSION }}.zip
         asset_content_type: application/zip
