@@ -31,7 +31,7 @@ jobs:
         prerelease: false
 
     - name: Archive project
-      run: zip -r UY-Sct_${{ env.VERSION }}.zip
+      run: zip -r UY-Sct_${{ env.VERSION }}.zip .
 
     - name: Upload Release Asset
       id: upload_release_asset
