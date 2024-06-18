@@ -18,7 +18,7 @@ jobs:
       run: |
         rm -rf my_workspaces/.my_workspaces
         rm -rf README.md
-        rm -rd REDME_EN.md
+        rm -rd README_EN.md
         rm -rf .git
         rm -rf .github
 
