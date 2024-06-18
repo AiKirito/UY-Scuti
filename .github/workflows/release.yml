@@ -17,20 +17,20 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-- name: Create tag
-  uses: actions/github-script@v5
-  with:
-    github-token: ${{ secrets.MY_TOKEN }}
-    script: |
-      const { repo: { owner, repo } } = github.context;
-      const version = process.env.VERSION;
-      const tag = `v${version}`;
-      await github.git.createRef({
-        owner,
-        repo,
-        ref: `refs/tags/${tag}`,
-        sha: github.context.sha
-      });
+    - name: Create tag
+      uses: actions/github-script@v5
+      with:
+        github-token: ${{ secrets.MY_TOKEN }}
+        script: |
+          const { repo: { owner, repo } } = github.context;
+          const version = process.env.VERSION;
+          const tag = `v${version}`;
+          await github.git.createRef({
+            owner,
+            repo,
+            ref: `refs/tags/${tag}`,
+            sha: github.context.sha
+          });
 
 
     - name: Remove workflow files
