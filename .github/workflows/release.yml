@@ -22,15 +22,13 @@ jobs:
       with:
         github-token: ${{ secrets.MY_TOKEN }}
         script: |
-          const { repo: { owner, repo } } = github.context;
-          const version = process.env.VERSION;
-          const tag = `v${version}`;
-          await github.git.createRef({
-            owner,
-            repo,
-            ref: `refs/tags/${tag}`,
-            sha: github.context.sha
-          });
+              const version = process.env.VERSION;
+              const tag = `v${version}`;
+              await github.git.createRef({
+                owner: github.context.repo.owner,
+                repo: github.context.repo.repo,
+                ref: `refs/tags/${tag}`,
+               sha: github.context.sha});
 
 
     - name: Remove workflow files
