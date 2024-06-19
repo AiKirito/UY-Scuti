@@ -1,4 +1,4 @@
-# Shield Seat UY
+# UY Sct
 **| English | [Simplified Chinese](README.md) |**
 
 This tool is designed to solve the problems of unpacking, packing, and modifying img files. It has been tested and can be used on WSL and Ubuntu. Other Linux kernel systems are pending testing, but it is expected that they can all work normally. To give the tool permissions, use:
@@ -45,7 +45,7 @@ Workspace Menu
 
 ----
 
-## How to use Shield Seat UY to complete a simple modification of a ROM (here is an example of HyperOS)?
+## How to use UY Sct to complete a simple modification of a ROM (here is an example of HyperOS)?
 1. Create a workspace, the name allows Chinese English spaces and symbols allowed by Windows Explorer.
 2. Select the workspace.
 3. Move the img or payload.bin file to the created workspace directory, and then use the extraction function.
