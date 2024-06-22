@@ -72,5 +72,6 @@
 1、 https://github.com/ColdWindScholar/TIK \
 2、 https://github.com/cubinator/ext4 \
 3、 https://github.com/nmeum/android-tools \
-4、 https://github.com/cfig/Android_boot_image_editor
+4、 https://github.com/cfig/Android_boot_image_editor \
+5、 https://github.com/nlitsme/extfstools
 等等......
