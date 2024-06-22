@@ -3,7 +3,7 @@
 
 This tool is designed to solve the problems of unpacking, packing, and modifying img files. It has been tested and can be used on WSL and Ubuntu. Other Linux kernel systems are pending testing, but it is expected that they can all work normally. To give the tool permissions, use:
 
-**CHMOD 777 -R ./*** 
+**chmod 777 -R ./*** 
 
 Then you can start the tool by simply entering:
 
