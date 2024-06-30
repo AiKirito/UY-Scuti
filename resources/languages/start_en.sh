@@ -1,5 +1,9 @@
 #!/bin/bash
 
+function keep_clean {
+find "$(dirname "$0")" -type f -name "*Zone.Identifier*" -exec rm -rf {} \;
+}
+
 # Define the packages to check
 packages=("lz4" "python3" "dtc")
 missing_packages=()
@@ -187,6 +191,7 @@ function delete_workspace {
 function workspace_menu {
   while true; do
     clear
+    keep_clean
     show_workspace_menu
     read choice
     case "$choice" in
@@ -238,6 +243,7 @@ function one_click_modify {
 # Main loop
 while true; do
   clear
+  keep_clean
   show_main_menu
   read choice
   case "$choice" in
