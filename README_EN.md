@@ -1,7 +1,9 @@
 # UY Sct
 **| English | [Simplified Chinese](README.md) |**
 
-This tool is designed to solve the problems of unpacking, packing, and modifying img files. It has been tested and can be used on WSL and Ubuntu. Other Linux kernel systems are pending testing, but it is expected that they can all work normally. To give the tool permissions, use:
+This tool is designed to solve the problems of unpacking, packing, and modifying img files.\
+This tool can be used in WSL and Ubuntu tests. You need to install "lz4" "python3" "dtc"\
+To give the tool permissions, use:
 
 **chmod 777 -R ./*** 
 
@@ -9,7 +11,10 @@ Then you can start the tool by simply entering:
 
 **./start.sh**
 
-**Please note that this tool requires the installation of some packages. The tool will automatically detect and inform you. Install the missing packages according to the prompts to run normally. This tool only supports img format partition files and the extraction of payload.bin in card flash package files. Older versions of other formats of partition files are not supported and will not be supported. The first time you use this tool, you must read the following instructions carefully. If you ask questions that are stated in the instructions without careful reading, I will ignore them.**
+**This tool only supports img format partition files and the extraction of payload.bin in card flash package files.\
+Older versions of other formats of partition files are not supported and will not be supported.\
+The first time you use this tool, you must read the following instructions carefully.\
+If you ask questions that are stated in the instructions without careful reading, I will ignore them.**
 
 ----
 
