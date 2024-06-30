@@ -4,26 +4,6 @@ function keep_clean {
 find "$(dirname "$0")" -type f -name "*Zone.Identifier*" -exec rm -rf {} \;
 }
 
-# 定义需要检查的包
-packages=("lz4" "python3" "dtc")
-missing_packages=()
-
-# 检查每个包是否已安装
-for package in "${packages[@]}"; do
-  if ! command -v $package &> /dev/null
-  then
-      missing_packages+=($package)
-  fi
-done
-
-# 如果有未安装的包，一起打印出来
-if [ ${#missing_packages[@]} -ne 0 ]; then
-    echo "缺少以下包：${missing_packages[@]}。请先安装它们，然后再运行此脚本。"
-    echo "按任意键退出..."
-    read -n 1
-    exit 1
-fi
-
 # 引入各个模块
 source "$(dirname "$0")/resources/module_codes/recognize_file_type.sh"
 source "$(dirname "$0")/resources/module_codes/switch_languages.sh"
@@ -205,7 +185,6 @@ function workspace_menu {
         ;;
       3)
         clear
-        preprocess_files
         package_super_image
         ;;
       4)

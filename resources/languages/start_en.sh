@@ -4,26 +4,6 @@ function keep_clean {
 find "$(dirname "$0")" -type f -name "*Zone.Identifier*" -exec rm -rf {} \;
 }
 
-# Define the packages to check
-packages=("lz4" "python3" "dtc")
-missing_packages=()
-
-# Check if each package is installed
-for package in "${packages[@]}"; do
-  if ! command -v $package &> /dev/null
-  then
-      missing_packages+=($package)
-  fi
-done
-
-# If there are uninstalled packages, print them out together
-if [ ${#missing_packages[@]} -ne 0 ]; then
-    echo "The following packages are missing: ${missing_packages[@]}. Please install them first and then run this script."
-    echo "Press any key to exit..."
-    read -n 1
-    exit 1
-fi
-
 # Import various modules
 source "$(dirname "$0")/resources/module_codes/recognize_file_type.sh"
 source "$(dirname "$0")/resources/module_codes/switch_languages.sh"
@@ -205,7 +185,6 @@ function workspace_menu {
         ;;
       3)
         clear
-        preprocess_files
         package_super_image
         ;;
       4)
