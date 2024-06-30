@@ -1,10 +1,32 @@
 #!/usr/bin/env python3
+
 import os
 import sys
 import ext4
 import re
 import struct
 import argparse
+from collections import Counter
+
+def get_most_common_context(context_file_path):
+    # 创建一个 Counter 对象来存储每种上下文的出现次数
+    context_counter = Counter()
+
+    # 打开上下文文件
+    with open(context_file_path, 'r') as f:
+        # 遍历文件的每一行
+        for line in f:
+            # 分割每一行以获取上下文
+            _, context = line.strip().split(' ', 1)
+            # 只获取空格右边的第一个内容
+            context = context.split()[0]
+            # 更新上下文的出现次数
+            context_counter[context] += 1
+
+    # 获取出现次数最多的上下文
+    most_common_context, _ = context_counter.most_common(1)[0]
+
+    return most_common_context
 
 # 创建一个解析器
 parser = argparse.ArgumentParser(description='处理 ext4 镜像文件并生成配置文件。')
@@ -46,26 +68,6 @@ stack = [(volume.root, "")]
 
 # 创建一个集合来保存已经访问过的路径
 visited = set()
-
-# 获取镜像文件本身的信息
-image_inode = volume.root 
-image_owner = image_inode.inode.i_uid
-image_group = image_inode.inode.i_gid
-image_mode = image_inode.inode.i_mode & 0o777  # 只保留权限位
-image_capabilities = None  # 假设没有特殊的能力
-
-# 获取镜像文件本身的 SELinux 上下文
-for xattr in image_inode.xattrs():  # 使用 image_inode.xattrs() 来获取所有的扩展属性
-    if xattr[0] == "security.selinux":
-        # 将这个文件的 SELinux 上下文存储到字典中
-        file_contexts["/"] = xattr[1]
-    elif xattr[0] == "security.capability":
-        # 将这个文件的特殊能力存储到字典中
-        image_capabilities = hex(int.from_bytes(xattr[1], 'little'))
-        image_capabilities = '0x' + image_capabilities[2:4].upper()
-
-# 将信息添加到 fs_config 列表中
-fs_config.append(("/", image_owner, image_group, image_mode, image_capabilities))
 
 while stack:
     inode, path = stack.pop()
@@ -138,24 +140,44 @@ if not os.path.exists(output_dir):
 
 # 将 file_contexts 信息输出到一个文本文件中
 with open(context_output_path, "w") as f:
-    # 首先写入无前缀的镜像本身的输出
-    f.write(f"/ u:object_r:rootfs:s0\n")
-    # 然后写入带有前缀的镜像信息
     for path, context in file_contexts.items():
         escaped_path = re.escape(path)  # 对路径中的特殊字符进行转义
-        f.write(f"/{prefix}{escaped_path} {context.decode('utf8')}\n")
+        f.write(f"/{prefix}{escaped_path} {context.decode('utf8', errors='replace')}\n")
 
 # 将 fs_config 信息输出到一个文本文件中
 with open(config_output_path, "w") as f:
-    # 首先写入无前缀的镜像本身的输出
-    f.write("/ 0 2000 0755\n")
-    # 然后写入带有前缀的镜像信息
     for path, owner, group, mode, capabilities in fs_config:
         if capabilities is not None:
             f.write(f"{prefix}{path} {owner} {group} 0{mode:o} {capabilities}\n")
         else:
             f.write(f"{prefix}{path} {owner} {group} 0{mode:o}\n")
 
+# 获取出现次数最多的上下文
+most_common_context = get_most_common_context(context_output_path)
+
+with open(context_output_path, 'r') as f:
+    lines = f.readlines()
+
+# 在列表的开始处添加一行，表示根目录/的上下文
+lines.insert(0, f"/ {most_common_context}\n")
+lines.insert(1, f"/{prefix} {most_common_context}\n")
+lines.insert(2, f"/{prefix}/ {most_common_context}\n")
+
+# 将修改后的列表写回到上下文文件中
+with open(context_output_path, 'w') as f:
+    f.writelines(lines)
+
+with open(config_output_path, 'r') as f:
+    lines = f.readlines()
+
+# 在列表的开始处添加新的行
+lines.insert(0, f"/ 0 0 0755\n")
+lines.insert(1, f"/{prefix} 0 0 0755\n")
+lines.insert(2, f"/{prefix}/ 0 0 0755\n")
+
+# 将修改后的列表写回到配置文件中
+with open(config_output_path, 'w') as f:
+    f.writelines(lines)
 
 # 在所有操作完成后关闭文件
 f.close()
