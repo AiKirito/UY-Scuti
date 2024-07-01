@@ -5,7 +5,11 @@ function extract_single_img {
   fs_type=$(recognize_file_type "$single_file")
   start=$(date +%s%N)
   # 在提取前清理一次目标文件夹
-  rm -rf "$WORK_DIR/$current_workspace/Extracted-files/$base_name"
+  if [[ "$fs_type" == "ext" || "$fs_type" == "erofs" || "$fs_type" == "f2fs" || \
+        "$fs_type" == "boot" || "$fs_type" == "dtbo" || "$fs_type" == "recovery" || \
+        "$fs_type" == "vbmeta" || "$fs_type" == "vendor_boot" ]]; then
+    rm -rf "$WORK_DIR/$current_workspace/Extracted-files/$base_name"
+  fi
   case "$fs_type" in
     sparse)
       echo "正在转换稀疏分区文件 ${single_file_name}，请稍等..."
@@ -13,16 +17,11 @@ function extract_single_img {
       rm -rf "$single_file"
       mv "$WORK_DIR/$current_workspace/${base_name}_converted.img" "$WORK_DIR/$current_workspace/${base_name}.img"
       single_file="$WORK_DIR/$current_workspace/${base_name}.img"
-      fs_type=$(recognize_file_type "$single_file")
-      if [ "$fs_type" == "super" ]; then
-        echo "正在提取非稀疏 SUPER 分区文件 ${single_file_name}，请稍等..."
-        "$TOOL_DIR/7z" e -bb1 -aoa "$single_file" -o"$WORK_DIR/$current_workspace"
-        rm "$single_file"
-        mkdir -p "$WORK_DIR/$current_workspace/Extracted-files/super"
-      fi
+      extract_single_img "$single_file"
+      return
       ;;
     super)
-      echo "正在提取非稀疏 SUPER 分区文件 ${single_file_name}，请稍等..."
+      echo "正在提取 SUPER 分区文件 ${single_file_name}，请稍等..."
       "$TOOL_DIR/7z" e -bb1 -aoa "$single_file" -o"$WORK_DIR/$current_workspace"
       rm "$single_file"
       mkdir -p "$WORK_DIR/$current_workspace/Extracted-files/super"
@@ -69,6 +68,8 @@ function extract_single_img {
       mv -f "$file" "${file%_a.img}.img"
     elif [[ $base_name == *_a.ext ]]; then
       mv -f "$file" "${file%_a.ext}.img"
+    elif [[ $base_name == *.ext ]]; then
+      mv -f "$file" "${file%.ext}.img"
     fi
   done
   echo "${single_file_name} 提取完成"

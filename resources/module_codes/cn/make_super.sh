@@ -1,56 +1,3 @@
-# 定义一个名为 preprocess_files 的函数，该函数接受一个参数：分区类型
-function preprocess_files {
-  local partition_type=$1  # 本地变量 partition_type，其值为函数的第一个参数
-
-  # 遍历 super 文件夹中的每个文件
-  for file in "$WORK_DIR/$current_workspace/Extracted-files/super/"*; do
-    # 使用 basename 命令提取文件名
-    base_name=$(basename "$file")
-  
-    # 如果文件名以 _b 或 _b.img 结尾，则删除该文件
-    if [[ "$base_name" == *_b || "$base_name" == *_b.img ]]; then
-      rm "$file"
-    fi
-
-    # 如果文件名以 _a.img 结尾，则将其改为 .img 形式
-    if [[ "$file" == *_a.img ]]; then
-      mv "$file" "${file%_a.img}.img"
-    fi
-  done
-
-  # 如果分区类型是 VAB 或 AB，那么处理 .img 文件
-  if [[ "$partition_type" == "VAB" || "$partition_type" == "AB" ]]; then
-    for file in "$WORK_DIR/$current_workspace/Extracted-files/super/"*.img; do
-      mv "$file" "${file%.img}_a.img"
-      if [[ "$partition_type" == "AB" ]]; then
-        cp "${file%.img}_a.img" "${file%.img}_b.img"
-      elif [[ "$partition_type" == "VAB" ]]; then
-        touch "${file%.img}_b"
-      fi
-    done
-  fi
-}
-
-# 定义一个名为 restore_files 的函数，该函数接受一个参数：分区类型
-function restore_files {
-  local partition_type=$1  # 本地变量 partition_type，其值为函数的第一个参数
-
-  # 检查 super 文件夹中的每个文件
-  for file in "$WORK_DIR/$current_workspace/Extracted-files/super/"*; do
-    # 使用 basename 命令提取文件名
-    base_name=$(basename "$file")
-  
-    # 如果文件名以 _b 或 _b.img 结尾，则删除该文件
-    if [[ "$base_name" == *_b || "$base_name" == *_b.img ]]; then
-      rm "$file"
-    elif [[ "$base_name" == *_a.img ]]; then
-      # 如果文件名以 _a.img 结尾，则将其改为 .img 形式
-      mv "$file" "${file%_a.img}.img"
-    fi
-  done
-}
-
-# 定义一个名为 create_super_img 的函数，该函数接受两个参数：分区类型和是否稀疏
 function create_super_img {
   local partition_type=$1  # 本地变量 partition_type，其值为函数的第一个参数
   local is_sparse=$2  # 本地变量 is_sparse，其值为函数的第二个参数
@@ -58,16 +5,21 @@ function create_super_img {
   # 计算 super 文件夹中所有文件的总字节数
   local total_size=0
   for file in "$WORK_DIR/$current_workspace/Extracted-files/super/"*; do
-    total_size=$((total_size + $(stat -c%s "$file")))
+    file_size_bytes=$(stat -c%s "$file")
+    remainder=$(($file_size_bytes % 4096))
+    if [ $remainder -ne 0 ]; then
+      file_size_bytes=$(($file_size_bytes + 4096 - $remainder))
+    fi
+    total_size=$(($total_size + $file_size_bytes))
   done
 
   # 定义额外的空间大小
-  local extra_space=$((125 * 1024 * 1024 * 1024 / 100 ))
+  local extra_space=$(( 125 * 1024 * 1024 * 1024 / 100 ))
 
   # 根据分区类型调整 total_size 的值
   case "$partition_type" in
     "AB")
-      total_size=$(( total_size + extra_space * 2 ))
+      total_size=$(((total_size + extra_space) * 2 ))
       ;;
     "ONLYA"|"VAB")
       total_size=$((total_size + extra_space))
@@ -170,11 +122,16 @@ esac
 # 初始化参数字符串
 params=""
 
+case "$is_sparse" in
+  "yes")
+    params+="--sparse"
+    ;;
+esac
+
 case "$partition_type" in
   "VAB")
-    device_size_vab=$((device_size))
-    params+=" --group \"$group_name_a:$device_size_vab\""
-    params+=" --group \"$group_name_b:$device_size_vab\""
+    params+=" --group \"$group_name_a:$device_size\""
+    params+=" --group \"$group_name_b:$device_size\""
     params+=" --virtual-ab"
     ;;
   "AB")
@@ -189,7 +146,7 @@ esac
 
 
   # 获取 super 目录下的所有镜像文件
-  img_files=("$WORK_DIR/$current_workspace/Extracted-files/super/"*)
+  img_files=("$WORK_DIR/$current_workspace/Extracted-files/super/"*.img)
 
   # 创建 Packed 目录（如果不存在）
   mkdir -p "$WORK_DIR/$current_workspace/Packed"
@@ -206,19 +163,15 @@ esac
     # 根据分区类型设置分区组名参数
     case "$partition_type" in
       "VAB")
-        if [[ "$partition_name" == *_a ]]; then
-          params+=" --partition \"$partition_name:readonly:$partition_size:$group_name_a\""
-          params+=" --image \"$partition_name=$img_file\""
-        fi
+          params+=" --partition \"${partition_name}_a:readonly:$partition_size:$group_name_a\""
+          params+=" --image \"${partition_name}_a=$img_file\""
+          params+=" --partition \"${partition_name}_b:readonly:0:$group_name_b\""
         ;;
       "AB")
-        if [[ "$partition_name" == *_a ]]; then
-          params+=" --partition \"$partition_name:readonly:$partition_size:$group_name_a\""
-          params+=" --image \"$partition_name=$img_file\""
-        elif [[ "$partition_name" == *_b ]]; then
-          params+=" --partition \"$partition_name:readonly:$partition_size:$group_name_b\""
-          params+=" --image \"$partition_name=$img_file\""
-        fi
+          params+=" --partition \"${partition_name}_a:readonly:$partition_size:$group_name_a\""
+          params+=" --image \"${partition_name}_a=$img_file\""
+          params+=" --partition \"${partition_name}_b:readonly:$partition_size:$group_name_b\""
+          params+=" --image \"${partition_name}_b=$img_file\""
         ;;
       *)
         params+=" --partition \"$partition_name:readonly:$partition_size:$group_name\""
@@ -239,27 +192,6 @@ esac
       $params \
       --output \"$WORK_DIR/$current_workspace/Packed/super.img\"" > /dev/null 2>&1
 
-  # 获取 super 目录下的所有镜像文件
-  img_files=("$WORK_DIR/$current_workspace/Extracted-files/super/"*)
-
-  # 循环处理每个镜像文件
-  for img_file in "${img_files[@]}"; do
-    # 从文件路径中提取文件名和扩展名
-    base_name=$(basename "$img_file")
-    partition_name=${base_name%.*}
-    extension=${base_name##*.}
-
-    if [[ "$partition_name" == *_b ]] && [[ "$extension" == "$partition_name" ]]; then
-      $TOOL_DIR/lpadd --readonly "$WORK_DIR/$current_workspace/Packed/super.img" "$partition_name" "$group_name_b" "$img_file"  > /dev/null 2>&1
-    fi
-  done
-  # 如果需要生成稀疏镜像，使用 img2simg 命令转换
-  if [ "$is_sparse" = "yes" ]; then
-    eval "$TOOL_DIR/img2simg  \
-      \"$WORK_DIR/$current_workspace/Packed/super.img\" \
-      \"$WORK_DIR/$current_workspace/Packed/super_sparse.img\""
-    mv "$WORK_DIR/$current_workspace/Packed/super_sparse.img" "$WORK_DIR/$current_workspace/Packed/super.img"
-  fi
   echo "SUPER 分区已打包"
               end=$(date +%s%N)
               runtime=$(awk "BEGIN {print ($end - $start) / 1000000000}")
@@ -375,24 +307,16 @@ function package_super_image {
         create_super_img "OnlyA" "no"
         ;;
      2-1)
-        preprocess_files "AB"
         create_super_img "AB" "yes"
-        restore_files
         ;;
      2-2)
-        preprocess_files "AB"
         create_super_img "AB" "no"
-        restore_files
         ;;
      3-1)
-        preprocess_files "VAB"
         create_super_img "VAB" "yes"
-        restore_files
         ;;
      3-2)
-        preprocess_files "VAB"
         create_super_img "VAB" "no"
-        restore_files
         ;;
     *)
       echo "   无效的选择，请重新输入。"

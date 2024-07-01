@@ -1,5 +1,4 @@
 function update_config_files {
-  # 定义局部变量
   local partition="$1"
   local fs_config_file="$WORK_DIR/$current_workspace/Extracted-files/config/${partition}_fs_config"
   local file_contexts_file="$WORK_DIR/$current_workspace/Extracted-files/config/${partition}_file_contexts"
@@ -51,30 +50,32 @@ function update_config_files {
       fi
     fi
 
-    # 检查 file_contexts 文件中是否已经存在该路径
-    # 转义路径中的特殊字符
     escaped_path=$(echo "$relative_path" | sed -e 's/[+.\\[()（）]/\\&/g' -e 's/]/\\]/g')
     if ! grep -Fq "/$escaped_path " "$temp_file_contexts_file"; then
-      # 如果不存在，则添加新的上下文
-      if [[ $relative_path == "$partition" ]]; then
-        relative_path="/$relative_path/"
-      fi
-      if [[ $relative_path != /* ]]; then
-        relative_path="/$relative_path"
-      fi
       echo "/$escaped_path u:object_r:${partition}_file:s0" >> "$temp_file_contexts_file"
     fi
   done
 
-  # 检查 lost+found 是否在配置文件和上下文文件中
   if ! grep -Fq "${partition}/lost+found " "$temp_fs_config_file"; then
     echo "${partition}/lost+found 0 0 0755" >> "$temp_fs_config_file"
   fi
   if ! grep -Fq "/${partition}/lost\+found " "$temp_file_contexts_file"; then
-    echo "/${partition}/lost\+found u:object_r:${partition}_file:s0" >> "$temp_file_contexts_file"
+    selinux_context=$(head -n 1 "$temp_file_contexts_file" | awk '{print $2}')
+    echo "/${partition}/lost\+found ${selinux_context}" >> "$temp_file_contexts_file"
+  fi
+  if ! grep -Fq "/${partition}/ " "$temp_file_contexts_file"; then
+    fix_selinux_context=$(head -n 1 "$temp_file_contexts_file" | awk '{print $2}')
+    echo "/${partition}/ ${fix_selinux_context}" >> "$temp_file_contexts_file"
   fi
 
-  # 替换旧的配置文件
+  sed -i "/\/${partition}(\/.*)? /d" "$temp_file_contexts_file"
+
+  if [[ "$fs_type_choice" == 2 || "$fs_type_choice" == 4 ]]; then
+    if ! grep -Fq "/${partition}(/.*)? " "$temp_file_contexts_file"; then
+      echo "/${partition}(/.*)? u:object_r:${partition}_file:s0" >> "$temp_file_contexts_file"
+    fi
+  fi
+
   mv "$temp_fs_config_file" "$fs_config_file"
   mv "$temp_file_contexts_file" "$file_contexts_file"
 
@@ -99,10 +100,23 @@ function package_single_partition {
       echo "分区配置文件更新完成"
       echo "正在打包 $(basename "$dir") 分区文件..."
 
-      "$mkfs_tool_path" -d1 -zlz4hc,1 -T "$utc" --mount-point="/$(basename "$dir")" --fs-config-file="$fs_config_file" --product-out="$(dirname "$output_image")" --file-contexts="$file_contexts_file" "$output_image" "$dir" > /dev/null
- 
+      "$mkfs_tool_path" -d1 -zlz4hc,1 -T "$utc" --mount-point="/$(basename "$dir")" --fs-config-file="$fs_config_file" --product-out="$(dirname "$output_image")" --file-contexts="$file_contexts_file" "$output_image" "$dir" > /dev/null 2>&1
       ;;
     2)
+      fs_type="f2fs"
+      mkfs_tool_path="$(dirname "$0")/resources/my_tools/make.f2fs"
+      sload_tool_path="$(dirname "$0")/resources/my_tools/sload.f2fs"
+      # 计算目录的大小（单位：MB）
+      size=$(($(du -sm "$dir" | cut -f1) * 11 / 10 + 55))
+
+      echo "分区配置文件更新完成"
+      echo "正在打包 $(basename "$dir") 分区文件..."
+      # 创建一个与目录大小相同的空镜像文件
+      dd if=/dev/zero of="$output_image" bs=1M count=$size > /dev/null 2>&1
+      "$mkfs_tool_path" "$output_image" -O extra_attr,inode_checksum,sb_checksum,compression -f -T "$utc" -q
+      "$sload_tool_path" -f "$dir" -C "$fs_config_file" -s "$file_contexts_file" -t "/$(basename "$dir")" "$output_image" -c -T "$utc" > /dev/null 2>&1
+      ;;
+    3)
       fs_type="ext4"
       mkfs_tool_path="$(dirname "$0")/resources/my_tools/make.ext4fs"
       # 计算目录的大小
@@ -118,7 +132,41 @@ function package_single_partition {
       echo "分区配置文件更新完成"
       echo "正在打包 $(basename "$dir") 分区文件..."
 
-      "$mkfs_tool_path" -J -l "$size" -b 4096 -S "$file_contexts_file" -L $(basename "$dir") -a "/$(basename "$dir")" -C "$fs_config_file" -T "$utc" "$output_image" "$dir" > /dev/null
+      "$mkfs_tool_path" -J -l "$size" -b 4096 -S "$file_contexts_file" -L $(basename "$dir") -a "/$(basename "$dir")" -C "$fs_config_file" -T "$utc" "$output_image" "$dir" > /dev/null 2>&1
+      ;;
+    4)
+      fs_type="f2fss"
+      mkfs_tool_path="$(dirname "$0")/resources/my_tools/make.f2fs"
+      sload_tool_path="$(dirname "$0")/resources/my_tools/sload.f2fs"
+      # 计算目录的大小（单位：MB）
+      size=$(($(du -sm "$dir" | cut -f1) * 11 / 10 + 55))
+
+      echo "分区配置文件更新完成"
+      echo "正在打包 $(basename "$dir") 分区文件..."
+      # 创建一个与目录大小相同的空镜像文件
+      dd if=/dev/zero of="$output_image" bs=1M count=$size > /dev/null 2>&1
+      "$mkfs_tool_path" "$output_image" -O extra_attr,inode_checksum,sb_checksum,compression -f -T "$utc" -q
+      "$sload_tool_path" -f "$dir" -C "$fs_config_file" -s "$file_contexts_file" -t "/$(basename "$dir")" "$output_image" -c -T "$utc" > /dev/null 2>&1
+      "$(dirname "$0")/resources/my_tools/img2simg" "$output_image" "$WORK_DIR/$current_workspace/Packed/$(basename "$dir")_sparse.img"
+      mv "$WORK_DIR/$current_workspace/Packed/$(basename "$dir")_sparse.img" "$output_image"
+      ;;
+    5)
+      fs_type="ext4s"
+      mkfs_tool_path="$(dirname "$0")/resources/my_tools/make.ext4fs"
+      # 计算目录的大小
+      size=$(du -sb "$dir" | cut -f1)
+      if [ "$size" -lt $((1024 * 1024)) ]; then
+        size=$((size * 6))
+      elif [ "$size" -lt $((50 * 1024 * 1024)) ]; then
+        size=$((size * 12 / 10))
+      else
+        # 否则，将大小增加到原来的1.1倍
+        size=$((size * 11 / 10))
+      fi
+      echo "分区配置文件更新完成"
+      echo "正在打包 $(basename "$dir") 分区文件..."
+
+      "$mkfs_tool_path" -s -J -l "$size" -b 4096 -S "$file_contexts_file" -L $(basename "$dir") -a "/$(basename "$dir")" -C "$fs_config_file" -T "$utc" "$output_image" "$dir" > /dev/null 2>&1
       ;;
   esac
   echo "$(basename "$dir") 分区文件打包完成"
@@ -209,12 +257,13 @@ function package_regular_image {
       if [ $special_dir_count -ne ${#dir_array[@]} ]; then
         clear
         while true; do
-          echo -e "\n   [1] EROFS    "  "[2] EXT4\n"
+          echo -e "\n   [1] EROFS    [2] F2FS    [3] EXT4"
+          echo -e "\n   [4] F2FSS    [5] EXT4S\n"
           echo -e "   [Q] 返回工作域菜单\n"
           echo -n "   请选择要打包的文件系统类型："
           read fs_type_choice
           fs_type_choice=$(echo "$fs_type_choice" | tr '[:upper:]' '[:lower:]')  # 将输入转换为小写
-          if [[ "$fs_type_choice" == "1" || "$fs_type_choice" == "2" ]]; then
+          if [[ "$fs_type_choice" == "1" || "$fs_type_choice" == "2" || "$fs_type_choice" == "3" || "$fs_type_choice" == "4" || "$fs_type_choice" == "5" ]]; then
             break
           elif [ "$fs_type_choice" = "q" ]; then
             return
@@ -250,12 +299,13 @@ function package_regular_image {
         else
           clear
           while true; do
-            echo -e "\n   [1] EROFS    "  "[2] EXT4\n"
+            echo -e "\n   [1] EROFS    [2] F2FS    [3] EXT4"
+            echo -e "\n   [4] F2FSS    [5] EXT4S\n"
             echo -e "   [Q] 返回工作域菜单\n"
             echo -n "   请选择要打包的文件系统类型："
             read fs_type_choice
             fs_type_choice=$(echo "$fs_type_choice" | tr '[:upper:]' '[:lower:]')  # 将输入转换为小写
-            if [[ "$fs_type_choice" == "1" || "$fs_type_choice" == "2" ]]; then
+            if [[ "$fs_type_choice" == "1" || "$fs_type_choice" == "2" || "$fs_type_choice" == "3" || "$fs_type_choice" == "4" || "$fs_type_choice" == "5" ]]; then
               break
             elif [ "$fs_type_choice" = "q" ]; then
               return
