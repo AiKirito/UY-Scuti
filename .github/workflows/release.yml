@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  VERSION: '2.0.0'
+  VERSION: '2.2.0'
 
 jobs:
   build:
@@ -29,7 +29,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
       with:
         tag_name: ${{ env.VERSION }}
-        release_name: UY-Sct ${{ env.VERSION }}
+        release_name: UY-Scuti ${{ env.VERSION }}
         draft: false
         prerelease: false
 
