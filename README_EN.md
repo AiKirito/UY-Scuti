@@ -2,7 +2,11 @@
 **| English | [Simplified Chinese](README.md) |**
 
 This tool is designed to solve the problems of unpacking, packing, and modifying img files.\
-This tool can be used in WSL and Ubuntu tests. You need to install "lz4" "python3" "dtc"\
+This tool can be used for testing on both WSL and Ubuntu. Install the necessary packages with the following commands:
+
+**sudo apt update** \
+**sudo apt install lz4 python3 openjdk-22-jdk device-tree-compiler**
+
 To give the tool permissions, use:
 
 **chmod 777 -R ./*** 
