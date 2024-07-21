@@ -5,7 +5,7 @@
 使用该工具在 WSL 和 Ubuntu 测试均可使用，安装所需要的包：
 
 **sudo apt update** \
-**sudo apt install lz4 python3 openjdk-22-jdk device-tree-compiler**
+**sudo apt install lz4 python3 openjdk-21-jdk device-tree-compiler**
 
 
 其它 Linux 内核系统待测试，推测都能正常工作，为工具给予权限：
