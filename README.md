@@ -2,7 +2,12 @@
 **| [English](README_EN.md) | 简体中文 |**
 
 该工具的目的是为了解决解包，打包，修改 img 麻烦的问题\
-使用该工具在 WSL 和 Ubuntu 测试均可使用，需要安装 "lz4" "python3" "dtc"\
+使用该工具在 WSL 和 Ubuntu 测试均可使用，安装所需要的包：
+
+**sudo apt update** \
+**sudo apt install lz4 python3 openjdk-22-jdk device-tree-compiler**
+
+
 其它 Linux 内核系统待测试，推测都能正常工作，为工具给予权限：
 
 **chmod 777 -R ./***
