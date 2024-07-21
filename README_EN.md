@@ -5,7 +5,7 @@ This tool is designed to solve the problems of unpacking, packing, and modifying
 This tool can be used for testing on both WSL and Ubuntu. Install the necessary packages with the following commands:
 
 **sudo apt update** \
-**sudo apt install lz4 python3 openjdk-22-jdk device-tree-compiler**
+**sudo apt install lz4 python3 openjdk-21-jdk device-tree-compiler**
 
 To give the tool permissions, use:
 
