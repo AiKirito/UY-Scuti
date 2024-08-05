@@ -3,13 +3,15 @@ function extract_single_img {
   local single_file_name=$(basename "$single_file")
   local base_name="${single_file_name%.*}"
   fs_type=$(recognize_file_type "$single_file")
-  start=$(date +%s%N)
+  start=$(python3 "$TOOL_DIR/get_right_time.py")
+
   # 在提取前清理一次目标文件夹
   if [[ "$fs_type" == "ext" || "$fs_type" == "erofs" || "$fs_type" == "f2fs" || \
         "$fs_type" == "boot" || "$fs_type" == "dtbo" || "$fs_type" == "recovery" || \
         "$fs_type" == "vbmeta" || "$fs_type" == "vendor_boot" ]]; then
     rm -rf "$WORK_DIR/$current_workspace/Extracted-files/$base_name"
   fi
+
   case "$fs_type" in
     sparse)
       echo "正在转换稀疏分区文件 ${single_file_name}，请稍等..."
@@ -17,14 +19,28 @@ function extract_single_img {
       rm -rf "$single_file"
       mv "$WORK_DIR/$current_workspace/${base_name}_converted.img" "$WORK_DIR/$current_workspace/${base_name}.img"
       single_file="$WORK_DIR/$current_workspace/${base_name}.img"
+      echo "${single_file_name} 转换完成"
       extract_single_img "$single_file"
       return
       ;;
     super)
       echo "正在提取 SUPER 分区文件 ${single_file_name}，请稍等..."
+      
+      # 读取 super 文件的字节数大小
+      super_size=$(stat -c%s "$single_file")
+      
+      # 创建 config 文件夹并写入 original_super_size 文件
+      mkdir -p "$WORK_DIR/$current_workspace/Extracted-files/config"
+
+      # 检查 original_super_size 文件是否存在且有内容
+      if [ ! -s "$WORK_DIR/$current_workspace/Extracted-files/config/original_super_size" ]; then
+        echo "$super_size" > "$WORK_DIR/$current_workspace/Extracted-files/config/original_super_size"
+      fi
+      
       "$TOOL_DIR/7z" e -bb1 -aoa "$single_file" -o"$WORK_DIR/$current_workspace"
       rm "$single_file"
       mkdir -p "$WORK_DIR/$current_workspace/Extracted-files/super"
+      echo "${single_file_name} 提取完成"
       ;;
     boot|dtbo|recovery|vbmeta|vendor_boot)
       echo "正在提取分区文件 ${single_file_name}，请稍等..."
@@ -35,31 +51,96 @@ function extract_single_img {
       mkdir -p "$WORK_DIR/$current_workspace/Extracted-files/$base_name"
       mv -f "$TOOL_DIR/boot_editor/build/unzip_boot"/* "$WORK_DIR/$current_workspace/Extracted-files/$base_name"
       mv -f "$TOOL_DIR/boot_editor/$base_name.img" "$TOOL_DIR/boot_editor/$base_name.img.wait"
+      echo "${single_file_name} 提取完成"
       ;;
     f2fs)
       echo "正在提取分区文件 ${single_file_name}，请稍等..."
       "$TOOL_DIR/extract.f2fs" "$single_file" -o "$WORK_DIR/$current_workspace/Extracted-files" > /dev/null 2>&1
+      echo "${single_file_name} 提取完成"
       ;;
     erofs)
       echo "正在提取分区文件 ${single_file_name}，请稍等..."
       "$TOOL_DIR/extract.erofs" -i "$single_file" -o "$WORK_DIR/$current_workspace/Extracted-files" -x > /dev/null 2>&1
+      echo "${single_file_name} 提取完成"
       ;;
     ext)
       echo "正在提取分区文件 ${single_file_name}，请稍等..."
-      PYTHONDONTWRITEBYTECODE=1 python "$TOOL_DIR/ext4_info_get.py" "$single_file" "$WORK_DIR/$current_workspace/Extracted-files/config"
+      PYTHONDONTWRITEBYTECODE=1 python3 "$TOOL_DIR/ext4_info_get.py" "$single_file" "$WORK_DIR/$current_workspace/Extracted-files/config"
       rm -rf "$WORK_DIR/$current_workspace/Extracted-files/$base_name"
       mkdir -p "$WORK_DIR/$current_workspace/Extracted-files/$base_name"
       "$TOOL_DIR/extract.ext" "$single_file" "./:$WORK_DIR/$current_workspace/Extracted-files/$base_name"
+      echo "${single_file_name} 提取完成"
       ;;
     payload)
       echo "正在提取 ${single_file_name}，请稍等..."
       "$TOOL_DIR/payload-dumper-go" -c 4 -o "$WORK_DIR/$current_workspace" "$single_file" > /dev/null 2>&1
       rm -rf "$single_file"
+      echo "${single_file_name} 提取完成"
+      ;;
+    zip)
+      # 列出 zip 文件内容
+      file_list=$("$TOOL_DIR/7z" l "$single_file")
+
+      # 检查是否存在 payload.bin 文件和 META-INF 文件夹
+      if echo "$file_list" | grep -q "payload.bin" && echo "$file_list" | grep -q "META-INF"; then
+        echo "检测到 ROM 刷入包 ${single_file_name}，请稍等..."
+        "$TOOL_DIR/7z" e -bb1 -aoa "$single_file" "payload.bin" -o"$WORK_DIR/$current_workspace"
+        extract_single_img "$WORK_DIR/$current_workspace/payload.bin"
+        rm -rf "$single_file"
+        return
+      # 检查是否存在 images 文件夹和 .img 文件
+      elif echo "$file_list" | grep -q "images/" && echo "$file_list" | grep -q ".img"; then
+        echo "检测到 ROM 刷入包 ${single_file_name}，请稍等..."
+        "$TOOL_DIR/7z" e -bb1 -aoa "$single_file" "images/*.img" -o"$WORK_DIR/$current_workspace"
+        rm -rf "$single_file"
+        echo "${single_file_name} 提取完成"
+      # 检查是否存在 AP, BL, CP, CSC 开头的文件
+      elif echo "$file_list" | grep -qE "AP|BL|CP|CSC"; then
+        echo "检测到 Odin 格式 ROM 包 ${single_file_name}，请稍等..."
+        "$TOOL_DIR/7z" e -bb1 -aoa "$single_file" -o"$WORK_DIR/$current_workspace" -ir'!AP*' -ir'!BL*' -ir'!CP*' -ir'!CSC*'
+        for extracted_file in "$WORK_DIR/$current_workspace"/{AP*,BL*,CP*,CSC*}; do
+          if [ -f "$extracted_file" ]; then
+            fs_type=$(recognize_file_type "$extracted_file")
+            if [ "$fs_type" == "tar" ]; then
+              extract_single_img "$extracted_file"
+            fi
+          fi
+        done
+        rm -rf "$single_file"
+        return
+      else
+        echo "${single_file_name} 可能并不是一个可刷入的 ROM 包"
+      fi
+      ;;
+    tar)
+      echo "正在提取 TAR 文件 ${single_file_name}，请稍等..."
+      "$TOOL_DIR/7z" x "$single_file" -o"$WORK_DIR/$current_workspace" -xr'!meta-data'
+      rm -rf "$single_file"
+      echo "${single_file_name} 提取完成"
+
+      found_lz4=false
+      for lz4_file in "$WORK_DIR/$current_workspace"/*.lz4; do
+        if [ -f "$lz4_file" ]; then
+          extract_single_img "$lz4_file"
+          found_lz4=true
+        fi
+      done
+
+      if [ "$found_lz4" = true ]; then
+        return
+      fi
+      ;;
+    lz4)
+      echo "正在提取 LZ4 文件 ${single_file_name}，请稍等..."
+      lz4 -dq "$single_file" "$WORK_DIR/$current_workspace/${base_name}"
+      rm -rf "$single_file"
+      echo "${single_file_name} 提取完成"
       ;;
     *)
-      echo "   未知的文件系统类型"
+      echo "未知的文件系统类型"
       ;;
   esac
+
   for file in "$WORK_DIR/$current_workspace"/*; do
     base_name=$(basename "$file")
     if [[ ! -s $file ]] || [[ $base_name == *_b.img ]] || [[ $base_name == *_b ]] || [[ $base_name == *_b.ext ]]; then
@@ -72,10 +153,9 @@ function extract_single_img {
       mv -f "$file" "${file%.ext}.img"
     fi
   done
-  echo "${single_file_name} 提取完成"
-  end=$(date +%s%N)
-  runtime=$(awk "BEGIN {print ($end - $start) / 1000000000}")
-  runtime=$(printf "%.3f" "$runtime")
+
+  end=$(python3 "$TOOL_DIR/get_right_time.py")
+  runtime=$(echo "scale=3; if ($end - $start < 1) print 0; $end - $start" | bc)
   echo "耗时： $runtime 秒"
 }
 
@@ -83,9 +163,9 @@ function extract_img {
   mkdir -p "$WORK_DIR/$current_workspace/Extracted-files/super"
   while true; do
     shopt -s nullglob
-    matched_bin_files=("$WORK_DIR/$current_workspace"/*.bin)
-    matched_img_files=("$WORK_DIR/$current_workspace"/*.img)
-    matched_files=("${matched_bin_files[@]}" "${matched_img_files[@]}")
+    regular_files=("$WORK_DIR/$current_workspace"/*.{bin,img})
+    specific_files=("$WORK_DIR/$current_workspace"/*.{zip,lz4,tar,md5})
+    matched_files=("${regular_files[@]}" "${specific_files[@]}")
     shopt -u nullglob
     if [ -e "${matched_files[0]}" ]; then
       displayed_files=()
@@ -115,15 +195,15 @@ function extract_img {
 	    echo -e "\n"
             extract_single_img "$file"
           done
-          echo -n "按任意键返回文件列表..."
+          echo -n "按任意键返回工作域菜单..."
           read -n 1
           clear
-          break
+          return
         elif [ "$choice" = "s" ]; then
           mkdir -p "$WORK_DIR/$current_workspace/Ready-to-flash/images"
-          for file in "$WORK_DIR/$current_workspace"/*.img; do
+          for file in "$WORK_DIR/$current_workspace"/*.{img,elf,melf,mbn,bin,fv,pit}; do
             filename=$(basename "$file")
-            if ! grep -q "$filename" "$TOOL_DIR/super_search"; then
+            if [ "$filename" != "super.img" ] && ! grep -q "$filename" "$TOOL_DIR/super_search"; then
               mv "$file" "$WORK_DIR/$current_workspace/Ready-to-flash/images/"
             fi
           done

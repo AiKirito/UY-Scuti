@@ -3,12 +3,15 @@ function extract_single_img {
   local single_file_name=$(basename "$single_file")
   local base_name="${single_file_name%.*}"
   fs_type=$(recognize_file_type "$single_file")
-  start=$(date +%s%N)
+  start=$(python3 "$TOOL_DIR/get_right_time.py")
+
+  # Clean the target folder before extraction
   if [[ "$fs_type" == "ext" || "$fs_type" == "erofs" || "$fs_type" == "f2fs" || \
         "$fs_type" == "boot" || "$fs_type" == "dtbo" || "$fs_type" == "recovery" || \
         "$fs_type" == "vbmeta" || "$fs_type" == "vendor_boot" ]]; then
     rm -rf "$WORK_DIR/$current_workspace/Extracted-files/$base_name"
   fi
+
   case "$fs_type" in
     sparse)
       echo "Converting sparse partition file ${single_file_name}, please wait..."
@@ -16,14 +19,27 @@ function extract_single_img {
       rm -rf "$single_file"
       mv "$WORK_DIR/$current_workspace/${base_name}_converted.img" "$WORK_DIR/$current_workspace/${base_name}.img"
       single_file="$WORK_DIR/$current_workspace/${base_name}.img"
+      echo "${single_file_name} 转换完成"
       extract_single_img "$single_file"
       return
       ;;
     super)
       echo "Extracting SUPER partition file ${single_file_name}, please wait..."
+      
+      # Read the byte size of the super file
+      super_size=$(stat -c%s "$single_file")
+      
+      # Create the config folder and write the original_super_size file
+      mkdir -p "$WORK_DIR/$current_workspace/Extracted-files/config"
+
+      if [ ! -s "$WORK_DIR/$current_workspace/Extracted-files/config/original_super_size" ]; then
+        echo "$super_size" > "$WORK_DIR/$current_workspace/Extracted-files/config/original_super_size"
+      fi
+      
       "$TOOL_DIR/7z" e -bb1 -aoa "$single_file" -o"$WORK_DIR/$current_workspace"
       rm "$single_file"
       mkdir -p "$WORK_DIR/$current_workspace/Extracted-files/super"
+      echo "${single_file_name} extraction completed"
       ;;
     boot|dtbo|recovery|vbmeta|vendor_boot)
       echo "Extracting partition file ${single_file_name}, please wait..."
@@ -34,35 +50,97 @@ function extract_single_img {
       mkdir -p "$WORK_DIR/$current_workspace/Extracted-files/$base_name"
       mv -f "$TOOL_DIR/boot_editor/build/unzip_boot"/* "$WORK_DIR/$current_workspace/Extracted-files/$base_name"
       mv -f "$TOOL_DIR/boot_editor/$base_name.img" "$TOOL_DIR/boot_editor/$base_name.img.wait"
+      echo "${single_file_name} extraction completed"
       ;;
     f2fs)
       echo "Extracting partition file ${single_file_name}, please wait..."
       "$TOOL_DIR/extract.f2fs" "$single_file" -o "$WORK_DIR/$current_workspace/Extracted-files" > /dev/null 2>&1
+      echo "${single_file_name} extraction completed"
       ;;
     erofs)
       echo "Extracting partition file ${single_file_name}, please wait..."
       "$TOOL_DIR/extract.erofs" -i "$single_file" -o "$WORK_DIR/$current_workspace/Extracted-files" -x > /dev/null 2>&1
+      echo "${single_file_name} extraction completed"
       ;;
     ext)
       echo "Extracting partition file ${single_file_name}, please wait..."
-      PYTHONDONTWRITEBYTECODE=1 python "$TOOL_DIR/ext4_info_get.py" "$single_file" "$WORK_DIR/$current_workspace/Extracted-files/config"
+      PYTHONDONTWRITEBYTECODE=1 python3 "$TOOL_DIR/ext4_info_get.py" "$single_file" "$WORK_DIR/$current_workspace/Extracted-files/config"
       rm -rf "$WORK_DIR/$current_workspace/Extracted-files/$base_name"
       mkdir -p "$WORK_DIR/$current_workspace/Extracted-files/$base_name"
       "$TOOL_DIR/extract.ext" "$single_file" "./:$WORK_DIR/$current_workspace/Extracted-files/$base_name"
+      echo "${single_file_name} extraction completed"
       ;;
     payload)
       echo "Extracting ${single_file_name}, please wait..."
-      "$TOOL_DIR/payload-dumper-go" -c 4 -o "$WORK_DIR/$current_workspace" "$single_file"
+      "$TOOL_DIR/payload-dumper-go" -c 4 -o "$WORK_DIR/$current_workspace" "$single_file" > /dev/null 2>&1
       rm -rf "$single_file"
+      echo "${single_file_name} extraction completed"
       ;;
+    zip) 
+      file_list=$("$TOOL_DIR/7z" l "$single_file") 
+      if echo "$file_list" | grep -q "payload.bin" && echo "$file_list" | grep -q "META-INF"; then 
+        echo "Detected ROM package ${single_file_name}, please wait..." 
+        "$TOOL_DIR/7z" e -bb1 -aoa "$single_file" "payload.bin" -o"$WORK_DIR/$current_workspace" 
+        extract_single_img "$WORK_DIR/$current_workspace/payload.bin" 
+        rm -rf "$single_file" 
+        return 
+      elif echo "$file_list" | grep -q "images/" && echo "$file_list" | grep -q ".img"; then 
+        echo "Detected ROM package ${single_file_name}, please wait..." 
+        "$TOOL_DIR/7z" e -bb1 -aoa "$single_file" "images/*.img" -o"$WORK_DIR/$current_workspace" 
+        rm -rf "$single_file" 
+        echo "${single_file_name} extraction completed" 
+      elif echo "$file_list" | grep -qE "AP|BL|CP|CSC"; then 
+        echo "Detected Odin format ROM package ${single_file_name}, please wait..." 
+        "$TOOL_DIR/7z" e -bb1 -aoa "$single_file" -o"$WORK_DIR/$current_workspace" -ir'!AP*' -ir'!BL*' -ir'!CP*' -ir'!CSC*' 
+        for extracted_file in "$WORK_DIR/$current_workspace"/{AP*,BL*,CP*,CSC*}; do 
+          if [ -f "$extracted_file" ]; then 
+            fs_type=$(recognize_file_type "$extracted_file") 
+            if [ "$fs_type" == "tar" ]; then 
+              extract_single_img "$extracted_file" 
+            fi 
+          fi 
+        done 
+        rm -rf "$single_file" 
+        return 
+      else 
+        echo "${single_file_name} may not be a flashable ROM package" 
+      fi 
+      ;; 
+    tar) 
+      echo "Extracting TAR file ${single_file_name}, please wait..." 
+      "$TOOL_DIR/7z" x "$single_file" -o"$WORK_DIR/$current_workspace" -xr'!meta-data' 
+      rm -rf "$single_file" 
+      echo "${single_file_name} extraction completed" 
+      found_lz4=false 
+      for lz4_file in "$WORK_DIR/$current_workspace"/*.lz4; do 
+        if [ -f "$lz4_file" ]; then 
+          extract_single_img "$lz4_file" 
+          found_lz4=true 
+        fi 
+      done 
+      if [ "$found_lz4" = true ]; then 
+        return 
+      fi 
+      ;; 
+    lz4) 
+      echo "Extracting LZ4 file ${single_file_name}, please wait..." 
+      lz4 -dq "$single_file" "$WORK_DIR/$current_workspace/${base_name}" 
+      rm -rf "$single_file" 
+      echo "${single_file_name} extraction completed" 
+      ;; 
+    *) 
+      echo "Unknown file system type" 
+      ;; 
+  esac 
     *)
-      echo "   Unknown file system type"
+      echo "Unknown file system type"
       ;;
   esac
+
   for file in "$WORK_DIR/$current_workspace"/*; do
     base_name=$(basename "$file")
-    if [[ ! -s $file ]] || [[ $base_name == *_b.img ]] || [[ $base_name == *_b ]]; then
-      rm "$file"
+    if [[ ! -s $file ]] || [[ $base_name == *_b.img ]] || [[ $base_name == *_b ]] || [[ $base_name == *_b.ext ]]; then
+      rm -rf "$file"
     elif [[ $base_name == *_a.img ]]; then
       mv -f "$file" "${file%_a.img}.img"
     elif [[ $base_name == *_a.ext ]]; then
@@ -71,20 +149,19 @@ function extract_single_img {
       mv -f "$file" "${file%.ext}.img"
     fi
   done
-  echo "${single_file_name} extraction completed"
-  end=$(date +%s%N)
-  runtime=$(awk "BEGIN {print ($end - $start) / 1000000000}")
-  runtime=$(printf "%.3f" "$runtime")
-  echo "Time consumed: $runtime seconds"
+
+  end=$(python3 "$TOOL_DIR/get_right_time.py")
+  runtime=$(echo "scale=3; if ($end - $start < 1) print 0; $end - $start" | bc)
+  echo "Time taken: $runtime seconds"
 }
 
 function extract_img {
   mkdir -p "$WORK_DIR/$current_workspace/Extracted-files/super"
   while true; do
     shopt -s nullglob
-    matched_bin_files=("$WORK_DIR/$current_workspace"/*.bin)
-    matched_img_files=("$WORK_DIR/$current_workspace"/*.img)
-    matched_files=("${matched_bin_files[@]}" "${matched_img_files[@]}")
+    regular_files=("$WORK_DIR/$current_workspace"/*.{bin,img})
+    specific_files=("$WORK_DIR/$current_workspace"/*.{zip,lz4,tar,md5})
+    matched_files=("${regular_files[@]}" "${specific_files[@]}")
     shopt -u nullglob
     if [ -e "${matched_files[0]}" ]; then
       displayed_files=()
@@ -114,15 +191,15 @@ function extract_img {
           for file in "${displayed_files[@]}"; do
             extract_single_img "$file"
           done
-          echo -n "Press any key to return to the file list... "
+          echo -n "Press any key to return to the workspace menu... "
           read -n 1
           clear
-          break
+          return
         elif [ "$choice" = "s" ]; then
           mkdir -p "$WORK_DIR/$current_workspace/Ready-to-flash/images"
           for file in "$WORK_DIR/$current_workspace"/*.img; do
             filename=$(basename "$file")
-            if ! grep -q "$filename" "$TOOL_DIR/super_search"; then
+            if [ "$filename" != "super.img" ] && ! grep -q "$filename" "$TOOL_DIR/super_search"; then
               mv "$file" "$WORK_DIR/$current_workspace/Ready-to-flash/images/"
             fi
           done

@@ -1,20 +1,31 @@
 function create_super_img {
-  local partition_type=$1  # 本地变量 partition_type，其值为函数的第一个参数
-  local is_sparse=$2  # 本地变量 is_sparse，其值为函数的第二个参数
+  local partition_type=$1
+  local is_sparse=$2
+  local img_files=()
+  
+  # 筛选出文件类型为 ext, f2fs, erofs 的文件
+  for file in "$WORK_DIR/$current_workspace/Extracted-files/super/"*.img; do
+    file_type=$(recognize_file_type "$file")
+    if [[ "$file_type" == "ext" || "$file_type" == "f2fs" || "$file_type" == "erofs" ]]; then
+      img_files+=("$file")
+    fi
+  done
 
   # 计算 super 文件夹中所有文件的总字节数
   local total_size=0
-  for file in "$WORK_DIR/$current_workspace/Extracted-files/super/"*; do
-    file_size_bytes=$(stat -c%s "$file")
-    remainder=$(($file_size_bytes % 4096))
-    if [ $remainder -ne 0 ]; then
-      file_size_bytes=$(($file_size_bytes + 4096 - $remainder))
-    fi
+  for img_file in "${img_files[@]}"; do
+    file_type=$(recognize_file_type "$img_file")
+    # 计算文件的大小
+    file_size_bytes=$(stat -c%s "$img_file")
     total_size=$(($total_size + $file_size_bytes))
   done
+  remainder=$(($total_size % 4096))
+  if [ $remainder -ne 0 ]; then
+    total_size=$(($total_size + 4096 - $remainder))
+  fi
 
   # 定义额外的空间大小
-  local extra_space=$(( 125 * 1024 * 1024 * 1024 / 100 ))
+  local extra_space=$(( 100 * 1024 * 1024 * 1024 / 100 ))
 
   # 根据分区类型调整 total_size 的值
   case "$partition_type" in
@@ -29,7 +40,14 @@ function create_super_img {
 
    while true; do
   # 显示 SUPER 文件夹中所有文件的总字节数
-    echo -e "\n   SUPER 参考值：$total_size\n" 
+    echo -e "\n   参考值大小：$total_size\n" 
+
+    # 尝试读取 original_super_size 文件的值
+    if [ -f "$WORK_DIR/$current_workspace/Extracted-files/config/original_super_size" ]; then
+      original_super_size=$(cat "$WORK_DIR/$current_workspace/Extracted-files/config/original_super_size")
+      echo -e "   原始大小：$original_super_size\n"
+    fi
+
     echo -e "   [1] 8.50 G    " "[2] 12.00 G    " "[3] 20.00 G\n"
     echo -e "   [4] 自定义输入    " "[Q] 返回工作域菜单\n"
     echo -n "   请选择打包 SUPER 的大小："
@@ -69,7 +87,7 @@ function create_super_img {
           if [[ "$device_size" =~ ^[0-9]+$ ]]; then
             # 如果输入值小于 total_size，要求重新输入
             if ((device_size < total_size)); then
-              echo "   输入的数值小于参考值，请重新输入："
+              echo "   输入的数值小于参考值，请重新输入"
             else
               if ((device_size % 4096 == 0)); then
                 break 
@@ -130,57 +148,62 @@ esac
 
 case "$partition_type" in
   "VAB")
-    params+=" --group \"$group_name_a:$device_size\""
-    params+=" --group \"$group_name_b:$device_size\""
+    overhead_adjusted_size=$((device_size - 40 * 1024 * 1024))
+    params+=" --group \"$group_name_a:$overhead_adjusted_size\""
+    params+=" --group \"$group_name_b:$overhead_adjusted_size\""
     params+=" --virtual-ab"
     ;;
   "AB")
-    device_size_ab=$((device_size / 2))
-    params+=" --group \"$group_name_a:$device_size_ab\""
-    params+=" --group \"$group_name_b:$device_size_ab\""
+    overhead_adjusted_size=$(((device_size / 2) - 40 * 1024 * 1024))
+    params+=" --group \"$group_name_a:$overhead_adjusted_size\""
+    params+=" --group \"$group_name_b:$overhead_adjusted_size\""
     ;;
   *)
-    params+=" --group \"$group_name:$device_size\""
+    overhead_adjusted_size=$((device_size - 40 * 1024 * 1024))
+    params+=" --group \"$group_name:$overhead_adjusted_size\""
     ;;
 esac
 
-
-  # 获取 super 目录下的所有镜像文件
-  img_files=("$WORK_DIR/$current_workspace/Extracted-files/super/"*.img)
-
-  # 创建 Packed 目录（如果不存在）
-  mkdir -p "$WORK_DIR/$current_workspace/Packed"
-
-  # 循环处理每个镜像文件
+ # 计算每个分区所拥有的大小
   for img_file in "${img_files[@]}"; do
     # 从文件路径中提取文件名
     base_name=$(basename "$img_file")
     partition_name=${base_name%.*}
 
-    # 使用 stat 命令获取镜像文件的大小
+    # 计算文件的大小
     partition_size=$(stat -c%s "$img_file")
+
+    # 根据文件系统类型设置 read-write 属性
+    file_type=$(recognize_file_type "$img_file")
+    if [[ "$file_type" == "ext" || "$file_type" == "f2fs" ]]; then
+      read_write_attr="none"
+    else
+      read_write_attr="readonly"
+    fi
 
     # 根据分区类型设置分区组名参数
     case "$partition_type" in
       "VAB")
-          params+=" --partition \"${partition_name}_a:readonly:$partition_size:$group_name_a\""
+          params+=" --partition \"${partition_name}_a:$read_write_attr:$partition_size:$group_name_a\""
           params+=" --image \"${partition_name}_a=$img_file\""
-          params+=" --partition \"${partition_name}_b:readonly:0:$group_name_b\""
+          params+=" --partition \"${partition_name}_b:$read_write_attr:0:$group_name_b\""
         ;;
       "AB")
-          params+=" --partition \"${partition_name}_a:readonly:$partition_size:$group_name_a\""
+          params+=" --partition \"${partition_name}_a:$read_write_attr:$partition_size:$group_name_a\""
           params+=" --image \"${partition_name}_a=$img_file\""
-          params+=" --partition \"${partition_name}_b:readonly:$partition_size:$group_name_b\""
+          params+=" --partition \"${partition_name}_b:$read_write_attr:$partition_size:$group_name_b\""
           params+=" --image \"${partition_name}_b=$img_file\""
         ;;
       *)
-        params+=" --partition \"$partition_name:readonly:$partition_size:$group_name\""
+        params+=" --partition \"$partition_name:$read_write_attr:$partition_size:$group_name\""
         params+=" --image \"$partition_name=$img_file\""
         ;;
     esac
   done
+
               echo -e "正在打包 SUPER 分区，等待中...\n..................\n..................\n.................."
-              start=$(date +%s%N)
+              mkdir -p "$WORK_DIR/$current_workspace/Repacked"
+              start=$(python3 "$TOOL_DIR/get_right_time.py")
 
     eval "$TOOL_DIR/lpmake  \
       --device-size \"$device_size\" \
@@ -190,13 +213,14 @@ esac
       --super-name \"$super_name\" \
       --force-full-image \
       $params \
-      --output \"$WORK_DIR/$current_workspace/Packed/super.img\"" > /dev/null 2>&1
+      --output \"$WORK_DIR/$current_workspace/Repacked/super.img\"" > /dev/null 2>&1
 
   echo "SUPER 分区已打包"
-              end=$(date +%s%N)
-              runtime=$(awk "BEGIN {print ($end - $start) / 1000000000}")
-              runtime=$(printf "%.3f" "$runtime")
+
+              end=$(python3 "$TOOL_DIR/get_right_time.py")
+              runtime=$(echo "scale=3; if ($end - $start < 1) print 0; $end - $start" | bc)
               echo "耗时： $runtime 秒"
+
   echo -n "按任意键返回工作域菜单..."
   read
 }
@@ -204,13 +228,8 @@ esac
 function package_super_image {
   echo -e "\n"
   mkdir -p "$WORK_DIR/$current_workspace/Extracted-files/super"
-  if [ ! -d "$WORK_DIR/$current_workspace/Extracted-files/super" ]; then
-    echo "   SUPER 目录不存在。"
-    read -n 1 -s -r -p "   按任意键返回工作域菜单..."
-    return
-  fi
 
-  # 检查 SUPER 目录中是否有镜像文件
+  # 获取所有镜像文件
   img_files=("$WORK_DIR/$current_workspace/Extracted-files/super/"*.img)
   real_img_files=()
   for file in "${img_files[@]}"; do
@@ -218,8 +237,29 @@ function package_super_image {
       real_img_files+=("$file")
     fi
   done
+
+  # 检查是否有足够的镜像文件
   if [ ${#real_img_files[@]} -lt 2 ]; then
     echo "   SUPER 目录需要至少应包含两个镜像文件。"
+    read -n 1 -s -r -p "   按任意键返回工作域菜单..."
+    return
+  fi
+
+  # 检查是否有被禁止的文件
+  forbidden_files=()
+  for file in "${real_img_files[@]}"; do
+    filename=$(basename "$file")
+    if ! grep -q -x "$filename" "$TOOL_DIR/super_search"; then
+      forbidden_files+=("$file")
+    fi
+  done
+
+  # 如果有被禁止的文件，显示错误信息并返回
+  if [ ${#forbidden_files[@]} -gt 0 ]; then
+    echo -e "   禁止打包的分区文件：\n"
+    for file in "${forbidden_files[@]}"; do
+      echo -e "   \e[33m$(basename "$file")\e[0m\n"
+    done
     read -n 1 -s -r -p "   按任意键返回工作域菜单..."
     return
   fi
@@ -230,7 +270,7 @@ function package_super_image {
     echo -e "   SUPER 待打包子分区：\n"
     for i in "${!img_files[@]}"; do
       file_name=$(basename "${img_files[$i]}")
-      printf "   \e[95m[%02d] %s\e[0m\n\n" $((i+1)) "$file_name"
+      printf "   \e[96m[%02d] %s\e[0m\n\n" $((i+1)) "$file_name"
     done
 
     echo -e "\n   [Y] 打包 SUPER    "  "[N] 返回工作域菜单\n"
@@ -238,8 +278,10 @@ function package_super_image {
     read is_pack
     clear
 
+    # 处理用户的选择
     case "$is_pack" in
       Y|y)
+        # 用户选择了打包，询问分区类型和打包方式
         while true; do
           echo -e "\n   [1] OnlyA 动态分区    "  "[2] AB 动态分区    "  "[3] VAB 动态分区\n"
           echo -e "   [Q] 返回工作域菜单\n"
@@ -252,8 +294,10 @@ function package_super_image {
           fi
           clear
 
+          # 处理用户选择的分区类型
           case "$partition_type" in
             1|2|3)
+              # 用户选择了有效的分区类型，询问打包方式
               while true; do
                 echo -e "\n   [1] 稀疏    "  "[2] 非稀疏\n"
                 echo -e "   [Q] 返回工作域菜单\n"
@@ -265,6 +309,7 @@ function package_super_image {
                   return
                 fi
 
+                # 处理用户选择的打包方式
                 case "$is_sparse" in
                   1|2)
                     break 
