@@ -1,57 +1,57 @@
-name: Release
-
-on:
-  workflow_dispatch:
-
-env:
-  VERSION: '3.1.0'
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-
-    - name: Remove unwanted files
-      run: |
-        rm -rf my_workspaces/.my_workspaces
-        rm -rf README.md
-        rm -rd README_EN.md
-        rm -rf .git
-        rm -rf .github
-
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
-      with:
-        tag_name: ${{ env.VERSION }}
-        release_name: UY-Scuti ${{ env.VERSION }}
-        draft: false
-        prerelease: false
-
-    - name: Archive project
-      run: zip -r UY-Sct_${{ env.VERSION }}.zip .
-
-    - name: Upload Release Asset
-      id: upload_release_asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./UY-Sct_${{ env.VERSION }}.zip
-        asset_name: UY-Sct_${{ env.VERSION }}.zip
-        asset_content_type: application/zip
-
-    - name: Update Release Notes
-      uses: actions/github-script@v4
-      with:
-        github-token: ${{ secrets.MY_TOKEN }}
-        script: |
-          const release_id = ${{ steps.create_release.outputs.release_id }}
-          process.env.RELEASE_ID = release_id
-          require('./.github/workflows/update-release-notes.js')
+name: Release 
+ 
+on: 
+  workflow_dispatch: 
+ 
+env: 
+  VERSION: '3.1.0' 
+ 
+jobs: 
+  build: 
+    runs-on: ubuntu-latest 
+ 
+    steps: 
+    - name: Checkout code 
+      uses: actions/checkout@v2 
+ 
+    - name: Remove unwanted files 
+      run: | 
+        rm -rf my_workspaces/.my_workspaces 
+        rm -rf README.md 
+        rm -rd README_EN.md 
+        rm -rf .git 
+        rm -rf .github 
+ 
+    - name: Create Release 
+      id: create_release 
+      uses: actions/create-release@v1 
+      env: 
+        GITHUB_TOKEN: ${{ secrets.MY_TOKEN }} 
+      with: 
+        tag_name: ${{ env.VERSION }} 
+        release_name: UY-Scuti ${{ env.VERSION }} 
+        draft: false 
+        prerelease: false 
+ 
+    - name: Archive project 
+      run: zip -r UY-Sct_${{ env.VERSION }}.zip . 
+ 
+    - name: Upload Release Asset 
+      id: upload_release_asset 
+      uses: actions/upload-release-asset@v1 
+      env: 
+        GITHUB_TOKEN: ${{ secrets.MY_TOKEN }} 
+      with: 
+        upload_url: ${{ steps.create_release.outputs.upload_url }} 
+        asset_path: ./UY-Sct_${{ env.VERSION }}.zip 
+        asset_name: UY-Sct_${{ env.VERSION }}.zip 
+        asset_content_type: application/zip 
+ 
+    - name: Update Release Notes 
+      uses: actions/github-script@v4 
+      with: 
+        github-token: ${{ secrets.MY_TOKEN }} 
+        script: | 
+          const release_id = ${{ steps.create_release.outputs.release_id }} 
+          const updateReleaseNotes = require('./.github/workflows/update-release-notes.js') 
+          updateReleaseNotes({ github, context, release_id })
