@@ -1,3 +1,6 @@
+const github = require('@actions/github'); 
+const context = github.context; 
+ 
 const release_id = process.env.RELEASE_ID; 
 const body =  
 本次更新具有许多更新，建议认真阅读 
@@ -18,9 +21,6 @@ This update includes many improvements, please read carefully
 6. One-click packaging function has been adjusted, supporting Fastboot(d) and Samsung Odin flash packages, for Samsung flash packages, you only need to put in the image files, the tool will automatically recognize the category and package 
 7. Now ext and f2fs in super are always writable, ensure your kernel supports it 
 ; 
- 
-const github = require('@actions/github'); 
-const context = github.context; 
  
 await github.rest.repos.updateRelease({ 
   owner: context.repo.owner, 
