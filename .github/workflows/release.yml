@@ -52,7 +52,7 @@ jobs:
       with:
         github-token: ${{ secrets.MY_TOKEN }}
         script: |
-          const release_id = ${{ steps.create_release.outputs.release_id }};
+          const release_id = ${{ steps.create_release.outputs.release_id }}
           const body = `
           本次更新具有许多更新，建议认真阅读
           1、修复 SUPER 分区有时候无法被正确打包的问题
@@ -71,10 +71,10 @@ jobs:
           5. Extraction supports more formats, now supports ZIP, TAR, LZ4 file extraction, with detection for ZIP and TAR, can correctly extract payload type flash packages and flash packages packaged by this tool as well as Samsung Odin format flash packages, greatly simplifying the operation
           6. One-click packaging function has been adjusted, supporting Fastboot(d) and Samsung Odin flash packages, for Samsung flash packages, you only need to put in the image files, the tool will automatically recognize the category and package
           7. Now ext and f2fs in super are always writable, ensure your kernel supports it
-          `;
+          `
           await github.rest.repos.updateRelease({
             owner: github.context.repo.owner,
             repo: github.context.repo.repo,
             release_id: release_id,
             body: body
-          });
+          })
