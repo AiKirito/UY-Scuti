@@ -32,7 +32,7 @@ jobs:
         release_name: UY-Scuti ${{ env.VERSION }} 
         draft: false 
         prerelease: false 
-        body: | 
+        body:  
           新的功能 
          1、ONEUI 的一键修改功能得到更多添加，现在详细说明，hyperos 和 oneui 都有一键替换，一键添加，你可以在相应的文件夹找到举例，从而知道需要添加与替换什么，小心，oneui 的添加是针对 system 分区，而 hyperos 是针对 product 分区 
          2、CSC 添加，用来给 oneui 增加功能 
