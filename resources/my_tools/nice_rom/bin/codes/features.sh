@@ -1,4 +1,125 @@
 #!/bin/bash
+apktool_path="$(dirname "$0")/bin/all/apktool/apktool_2.9.3.jar"
+
+remove_device_and_network_verification() {
+  while IFS= read -r -d '' settings_apk_path; do
+    rm -rf "$(dirname "$settings_apk_path")/oat"
+    java -jar "$apktool_path" d -f -r "$settings_apk_path" -o "${settings_apk_path%.apk}"
+
+    while IFS= read -r -d '' smali_file; do
+      if [[ "$smali_file" == *"com/android/settings/MiuiDeviceNameEditFragment.smali" ]]; then
+        sed -i 's/sget-boolean \([vp][0-9]\+\), Lmiui\/os\/Build;->IS_INTERNATIONAL_BUILD:Z/const\/4 \1, 0x1/' "$smali_file"
+        echo -e "开始移除设备名称验证...\n$smali_file"
+      fi
+
+      if [[ "$smali_file" == *"com/android/settings/wifi/EditTetherFragment.smali" ]]; then
+        sed -i 's/sget-boolean \([vp][0-9]\+\), Lmiui\/os\/Build;->IS_INTERNATIONAL_BUILD:Z/const\/4 \1, 0x1/' "$smali_file"
+        echo -e "开始移除网络验证...\n$smali_file"
+      fi
+
+      if [[ "$smali_file" == *"com/android/settings/DeviceNameCheckManager.smali" ]]; then
+        sed -i 's/sget-boolean \([vp][0-9]\+\), Lmiui\/os\/Build;->IS_INTERNATIONAL_BUILD:Z/const\/4 \1, 0x1/' "$smali_file"
+        echo -e "开始移除设备名称检测...\n$smali_file"
+      fi
+
+      if [[ "$smali_file" == *"com/android/settings/bluetooth/MiuiBTUtils.smali" ]]; then
+        sed -i '/.method public static isInternationalBuild()Z/,/.end method/c\
+.method public static isInternationalBuild()Z\n\
+    .registers 1\n\
+    const/4 v0, 0x1\n\
+    return v0\n\
+.end method' "$smali_file"
+
+        sed -i '/.method public static isSupportNameComplianceCheck(Landroid\/content\/Context;)Z/,/.end method/c\
+.method public static isSupportNameComplianceCheck(Landroid\/content\/Context;)Z\n\
+    .registers 1\n\
+    const/4 p0, 0x0\n\
+    return p0\n\
+.end method' "$smali_file"
+        echo -e "开始移除蓝牙设备名称验证及检测...\n$smali_file"
+      fi
+    done < <(find "${settings_apk_path%.apk}" -name '*.smali' -print0)
+
+    java -jar "$apktool_path" b -c -f "${settings_apk_path%.apk}" -o "$settings_apk_path"
+    rm -rf "${settings_apk_path%.apk}"
+    echo -e "以上修改已完成"
+  done < <(find "$onepath" -name "Settings.apk" -print0)
+
+  while IFS= read -r -d '' wifi_service_jar_path; do
+    java -jar "$apktool_path" d -f -r "$wifi_service_jar_path" -o "${wifi_service_jar_path%.jar}"
+    echo -e "开始移除网络自动恢复验证...\n$wifi_service_jar_path"
+
+    while IFS= read -r -d '' smali_file; do
+      if [[ "$smali_file" == *"com/android/server/wifi/Utils.smali" ]]; then
+        sed -i '/.method public static checkDeviceNameIsIllegalSync(Landroid\/content\/Context;ILjava\/lang\/String;)Z/,/.end method/c\
+.method public static checkDeviceNameIsIllegalSync(Landroid\/content\/Context;ILjava\/lang\/String;)Z\n\
+    .registers 3\n\
+    const/4 p0, 0x0\n\
+    return p0\n\
+.end method' "$smali_file"
+        echo "网络自动恢复验证已移除"
+      fi
+    done < <(find "${wifi_service_jar_path%.jar}" -name '*.smali' -print0)
+
+    java -jar "$apktool_path" b -c -f "${wifi_service_jar_path%.jar}" -o "$wifi_service_jar_path"
+    rm -rf "${wifi_service_jar_path%.jar}"
+  done < <(find "$onepath" -name "miui-wifi-service.jar" -print0)
+}
+
+prevent_theme_reversion() {
+  while IFS= read -r -d '' system_ext_dir; do
+    if [[ -d "$system_ext_dir/framework" && -f "$system_ext_dir/framework/miui-framework.jar" ]]; then
+      java -jar "$apktool_path" d -f "$system_ext_dir/framework/miui-framework.jar" -o "$system_ext_dir/framework/miui-framework"
+
+      echo "搜寻到的要修改的目标："
+      while IFS= read -r -d '' smali_file; do
+        echo "$smali_file"
+        sed -i '/invoke-static {.*}, Lmiui\/drm\/DrmManager;->isLegal(Landroid\/content\/Context;Ljava\/io\/File;Ljava\/io\/File;)Lmiui\/drm\/DrmManager$DrmResult;/,/move-result-object [a-z0-9]*/{s/invoke-static {.*}, Lmiui\/drm\/DrmManager;->isLegal(Landroid\/content\/Context;Ljava\/io\/File;Ljava\/io\/File;)Lmiui\/drm\/DrmManager$DrmResult;//;s/move-result-object \([a-z0-9]*\)/sget-object \1, Lmiui\/drm\/DrmManager\$DrmResult;->DRM_SUCCESS:Lmiui\/drm\/DrmManager\$DrmResult;/}' "$smali_file"
+      done < <(find "$system_ext_dir/framework/miui-framework" -name "ThemeReceiver.smali" -print0)
+
+      java -jar "$apktool_path" b -api 29 -c -f "$system_ext_dir/framework/miui-framework" -o "$system_ext_dir/framework/miui-framework.jar"
+      rm -rf "$system_ext_dir/framework/miui-framework"
+      echo "成功移除主题还原"
+    fi
+  done < <(find "$onepath" -type d -name 'system_ext' -print0)
+}
+
+invoke_native_installer() {
+  while IFS= read -r -d '' system_ext_dir; do
+    if [[ -d "$system_ext_dir/framework" && -f "$system_ext_dir/framework/miui-services.jar" ]]; then
+      java -jar "$apktool_path" d -f "$system_ext_dir/framework/miui-services.jar" -o "${system_ext_dir}/framework/miui-services"
+      echo "搜寻到的要修改的目标："
+      local smali_file="${system_ext_dir}/framework/miui-services/smali/com/android/server/pm/PackageManagerServiceImpl.smali"
+      if [[ -f "$smali_file" ]]; then
+        echo "$smali_file"
+        sed -i '/.method public checkGTSSpecAppOptMode()V/,/.end method/c\.method public checkGTSSpecAppOptMode()V\n    .registers 1\n    return-void\n.end method' "$smali_file"
+
+        sed -i '/.method public static isCTS()Z/,/.end method/c\.method public static isCTS()Z\n    .registers 1\n\n    const/4 v0, 0x1\n\n    return v0\n.end method' "$smali_file"
+      fi
+      
+      java -jar "$apktool_path" b -c -f "${system_ext_dir}/framework/miui-services" -o "${system_ext_dir}/framework/miui-services.jar"
+      rm -rf "${system_ext_dir}/framework/miui-services"
+      echo "成功调用 Android 原生安装器"
+    fi
+  done < <(find "$onepath" -type d -name 'system_ext' -print0)
+}
+
+remove_unsigned_app_verification() {
+  while IFS= read -r -d '' jarfile; do
+    java -jar "$apktool_path" d -f -r "$jarfile" -o "${jarfile%.jar}"
+    echo "搜寻到的要修改的目标："
+    while IFS= read -r -d '' smali_file; do
+      if sed -n '/invoke-static {.*}, Landroid\/util\/apk\/ApkSignatureVerifier;->getMinimumSignatureSchemeVersionForTargetSdk(I)I/,/move-result [a-z0-9]*/p' "$smali_file" | grep -q 'invoke-static'; then
+        sed -i '/invoke-static {.*}, Landroid\/util\/apk\/ApkSignatureVerifier;->getMinimumSignatureSchemeVersionForTargetSdk(I)I/,/move-result [a-z0-9]*/{s/invoke-static {.*}, Landroid\/util\/apk\/ApkSignatureVerifier;->getMinimumSignatureSchemeVersionForTargetSdk(I)I//;s/move-result \([a-z0-9]*\)/const\/4 \1, 0x0/}' "$smali_file"
+        echo "$smali_file"
+      fi
+    done < <(find "${jarfile%.jar}" -name '*.smali' -print0)
+
+    java -jar "$apktool_path" b -c -f "${jarfile%.jar}" -o "$jarfile"
+    rm -rf "${jarfile%.jar}"
+    echo "成功移除未签名应用的校验"
+  done < <(find "$onepath" -name "services.jar" -print0)
+}
 
 copy_dir_xiaomi() {
     # 声明一个关联数组，键和值分别代表源目录和目标目录
@@ -160,67 +281,6 @@ update_build_props() {
   done < <(find "$onepath" -type d \( -name 'system' -o -name 'vendor' -o -name 'product' \) -print0)
 }
 
-prevent_theme_reversion() {
-  local apktool_path="$(dirname "$0")/bin/all/apktool/apktool_2.9.3.jar"
-
-  while IFS= read -r -d '' system_ext_dir; do
-    if [[ -d "$system_ext_dir/framework" && -f "$system_ext_dir/framework/miui-framework.jar" ]]; then
-      java -jar "$apktool_path" d -f "$system_ext_dir/framework/miui-framework.jar" -o "$system_ext_dir/framework/miui-framework"
-
-      echo "搜寻到的要修改的目标："
-      while IFS= read -r -d '' smali_file; do
-        echo "$smali_file"
-        sed -i '/invoke-static {.*}, Lmiui\/drm\/DrmManager;->isLegal(Landroid\/content\/Context;Ljava\/io\/File;Ljava\/io\/File;)Lmiui\/drm\/DrmManager$DrmResult;/,/move-result-object [a-z0-9]*/{s/invoke-static {.*}, Lmiui\/drm\/DrmManager;->isLegal(Landroid\/content\/Context;Ljava\/io\/File;Ljava\/io\/File;)Lmiui\/drm\/DrmManager$DrmResult;//;s/move-result-object \([a-z0-9]*\)/sget-object \1, Lmiui\/drm\/DrmManager\$DrmResult;->DRM_SUCCESS:Lmiui\/drm\/DrmManager\$DrmResult;/}' "$smali_file"
-      done < <(find "$system_ext_dir/framework/miui-framework" -name "ThemeReceiver.smali" -print0)
-
-      java -jar "$apktool_path" b -api 29 -c -f "$system_ext_dir/framework/miui-framework" -o "$system_ext_dir/framework/miui-framework.jar"
-      rm -rf "$system_ext_dir/framework/miui-framework"
-      echo "成功移除主题还原"
-    fi
-  done < <(find "$onepath" -type d -name 'system_ext' -print0)
-}
-
-invoke_native_installer() {
-  local apktool_path="$(dirname "$0")/bin/all/apktool/apktool_2.9.3.jar"
-
-  while IFS= read -r -d '' system_ext_dir; do
-    if [[ -d "$system_ext_dir/framework" && -f "$system_ext_dir/framework/miui-services.jar" ]]; then
-      java -jar "$apktool_path" d -f "$system_ext_dir/framework/miui-services.jar" -o "${system_ext_dir}/framework/miui-services"
-      echo "搜寻到的要修改的目标："
-      local smali_file="${system_ext_dir}/framework/miui-services/smali/com/android/server/pm/PackageManagerServiceImpl.smali"
-      if [[ -f "$smali_file" ]]; then
-        echo "$smali_file"
-        sed -i '/.method public checkGTSSpecAppOptMode()V/,/.end method/c\.method public checkGTSSpecAppOptMode()V\n    .registers 1\n    return-void\n.end method' "$smali_file"
-
-        sed -i '/.method public static isCTS()Z/,/.end method/c\.method public static isCTS()Z\n    .registers 1\n\n    const/4 v0, 0x1\n\n    return v0\n.end method' "$smali_file"
-      fi
-      
-      java -jar "$apktool_path" b -c -f "${system_ext_dir}/framework/miui-services" -o "${system_ext_dir}/framework/miui-services.jar"
-      rm -rf "${system_ext_dir}/framework/miui-services"
-      echo "成功调用 Android 原生安装器"
-    fi
-  done < <(find "$onepath" -type d -name 'system_ext' -print0)
-}
-
-remove_unsigned_app_verification() {
-  local apktool_path="$(dirname "$0")/bin/all/apktool/apktool_2.9.3.jar"
-
-  while IFS= read -r -d '' jarfile; do
-    java -jar "$apktool_path" d -f -r "$jarfile" -o "${jarfile%.jar}"
-    echo "搜寻到的要修改的目标："
-    while IFS= read -r -d '' smali_file; do
-      if sed -n '/invoke-static {.*}, Landroid\/util\/apk\/ApkSignatureVerifier;->getMinimumSignatureSchemeVersionForTargetSdk(I)I/,/move-result [a-z0-9]*/p' "$smali_file" | grep -q 'invoke-static'; then
-        sed -i '/invoke-static {.*}, Landroid\/util\/apk\/ApkSignatureVerifier;->getMinimumSignatureSchemeVersionForTargetSdk(I)I/,/move-result [a-z0-9]*/{s/invoke-static {.*}, Landroid\/util\/apk\/ApkSignatureVerifier;->getMinimumSignatureSchemeVersionForTargetSdk(I)I//;s/move-result \([a-z0-9]*\)/const\/4 \1, 0x0/}' "$smali_file"
-        echo "$smali_file"
-      fi
-    done < <(find "${jarfile%.jar}" -name '*.smali' -print0)
-
-    java -jar "$apktool_path" b -c -f "${jarfile%.jar}" -o "$jarfile"
-    rm -rf "${jarfile%.jar}"
-    echo "成功移除未签名应用的校验"
-  done < <(find "$onepath" -name "services.jar" -print0)
-}
-
 replace_files_xiaomi() {
     local src_dir="$(dirname "$0")/bin/xiaomi/replace"
     local dst_dir="$onepath"
@@ -328,11 +388,18 @@ encode_csc() {
 
 deodex() {
     local found=false
-    echo "删除列表："
-    for file in oat "*.art" "*.oat" "*.vdex" "*.odex" "*.fsv_meta" "*.bprof" "*.prof"; do
-        if find "$onepath" -name "$file" -print0 | xargs -0 | grep -q .; then
-            found=true
-            find "$onepath" -name "$file" -not \( -name "" -o -name "" \) -print0 | xargs -0 -I {} sh -c 'echo {}; rm -rf {}'
+    local exclude_files=("举例")
+    local exclude_string=""
+    for exclude in "${exclude_files[@]}"; do
+        exclude_string+=" -not -iname $exclude"
+    done
+    for file in "oat" "*.art" "*.oat" "*.vdex" "*.odex" "*.fsv_meta" "*.bprof" "*.prof"; do
+        if find "$onepath" -name "$file" $exclude_string -print0 | xargs -0 | grep -q .; then
+            if [ "$found" = false ]; then
+                echo "删除列表："
+                found=true
+            fi
+            find "$onepath" -name "$file" $exclude_string -print0 | xargs -0 -I {} sh -c 'echo "{}"; rm -rf "{}"'
         fi
     done
     if [ "$found" = false ]; then
@@ -342,12 +409,14 @@ deodex() {
 
 deodex_key_files() {
     local found=false
-    local files=("services.art" "services.odex" "services.vdex" "services.*.fsv_meta" "services.jar.bprof" "services.jar.prof" "miui-services.jar.fsv_meta" "miui-framework.jar.fsv_meta" "miui-services.odex" "miui-services.odex.fsv_meta" "miui-services.vdex" "miui-services.vdex.fsv_meta")
-    echo "关键性删除列表："
+    local files=("services.*" "miui-services.*" "miui-framework.*" "miui-wifi-service.*")
     for file in "${files[@]}"; do
-        if find "$onepath" -name "$file" -print0 | xargs -0 | grep -q .; then
-            found=true
-            find "$onepath" -name "$file" -print0 | xargs -0 -I {} sh -c 'echo {}; rm -rf {}'
+        if find "$onepath" -name "$file" -not -name "*.jar" -print0 | xargs -0 | grep -q .; then
+            if [ "$found" = false ]; then
+                echo "关键性删除列表："
+                found=true
+            fi
+            find "$onepath" -name "$file" -not -name "*.jar" -print0 | xargs -0 -I {} sh -c 'echo "{}"; rm -rf "{}"'
         fi
     done
     if [ "$found" = false ]; then
@@ -362,8 +431,8 @@ remove_all() {
 }
 
 remove_files() {
-    exclude_files=("samsungpass" "KnoxDesktopLauncher")
-    exclude_string=""
+    local exclude_files=("samsungpass" "KnoxDesktopLauncher")
+    local exclude_string=""
     for exclude in "${exclude_files[@]}"; do
         exclude_string+=" -not -iname $exclude"
     done

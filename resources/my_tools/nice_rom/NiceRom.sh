@@ -21,7 +21,7 @@ while true; do
         case $brand in
             "HyperOS")
                 echo "已选择 HyperOS"
-                options_order=("删除小爱翻译" "删除小爱语音组件" "删除小爱通话" "删除互联互通服务 ROOT 验证" "删除浏览器" "删除音乐" "删除视频" "删除钱包" "删除广告与分析组件" "删除 Joyose 云控" "删除自带输入法" "删除传送门" "删除智能助理" "删除搜索功能" "删除悬浮球" "删除应用商店" "删除服务与反馈" "删除系统更新" "删除家人守护" "删除下载管理器" "删除预装应用" "删除所有" "HyperOS 替换" "HyperOS 添加-product 分区" "禁用未签名验证" "调用原生安装器" "禁止主题还原" "添加新特性" "关键性 deodex" "Deodex" "返回工作域菜单" "退出程序")
+                options_order=("删除小爱翻译" "删除小爱语音组件" "删除小爱通话" "删除互联互通服务 ROOT 验证" "删除浏览器" "删除音乐" "删除视频" "删除钱包" "删除广告与分析组件" "删除 Joyose 云控" "删除自带输入法" "删除传送门" "删除智能助理" "删除搜索功能" "删除悬浮球" "删除应用商店" "删除服务与反馈" "删除系统更新" "删除家人守护" "删除下载管理器" "删除预装应用" "删除所有" "HyperOS 替换" "HyperOS 添加-product 分区" "禁用未签名验证" "禁用设备与热点名称检测" "调用原生安装器" "禁止主题还原" "添加新特性" "关键性 deodex" "Deodex" "返回工作域菜单" "退出程序")
                 declare -A options
                 options=(
                     ["删除小爱翻译"]="AiAsstVision*"
@@ -44,7 +44,7 @@ while true; do
                     ["删除系统更新"]="Updater"
                     ["删除家人守护"]="MIUIgreenguard"
                     ["删除下载管理器"]="DownloadProviderUi"
-                    ["删除预装应用"]="MiShop* Health* SmartHome wps-lite XMRemoteController ThirdAppAssistant MIUIVirtualSim MIUIVipAccount MIUIMiDrive* MIUIHuanji* MIUIEmail* MIGalleryLockscreen* MIUIGameCenter* MIUINotes* MIUIDuokanReader* MIUIYoupin* MIUINewHome_Removable* system NewHome* MiRadio"
+                    ["删除预装应用"]="MiShop* Health* SmartHome wps-lite XMRemoteController ThirdAppAssistant MIUIVirtualSim MIUIVipAccount MIUIMiDrive* MIUIHuanji* MIUIEmail* MIGalleryLockscreen* MIUIGameCenter* MIUINotes* MIUIDuokanReader* MIUIYoupin* MIUINewHome_Removable* system NewHome* MiRadio MiBugReport MiGameCenterSDKService"
                 )
                 brand_selected=true
                 break
@@ -150,6 +150,10 @@ for selection in "${selections[@]}"; do
         for selection in "${selections[@]}"; do
             opt=${options_order[$((selection-1))]}
             case $opt in
+                "禁用设备与热点名称检测")
+                    echo "已选择 禁用设备与热点名称检测"
+                    remove_device_and_network_verification
+                    ;;
                 "HyperOS 替换")
                     echo "已选择 HyperOS 替换"
                     replace_files_xiaomi
