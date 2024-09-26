@@ -48,7 +48,7 @@ function create_super_img {
     fi
 
     echo -e "   [1] 8.50 G    " "[2] 12.00 G    " "[3] 20.00 G\n"
-    echo -e "   [4] Custom input    " "[Q] Return to workspace menu\n"
+    echo -e "   [4] original  " "[5] Custom input   " "[Q] Return to workspace menu\n"    
     echo -n "   Please select the size to package SUPER: "
     read device_size_option
 
@@ -79,6 +79,14 @@ function create_super_img {
         break
         ;;
       4)
+        device_size=$original_super_size
+        if ((device_size < total_size)); then
+          echo "   Less than the reference value, please choose another option."
+          continue
+        fi
+        break
+        ;;
+      5)      
         while true; do
           echo -n "   Please enter the custom size: "
           read device_size
