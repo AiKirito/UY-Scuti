@@ -49,7 +49,7 @@ function create_super_img {
     fi
 
     echo -e "   [1] 8.50 G    " "[2] 12.00 G    " "[3] 20.00 G\n"
-    echo -e "   [4] 自定义输入    " "[Q] 返回工作域菜单\n"
+    echo -e "   [4] 原始值     " "[5] 自定义输入   " "[Q] 返回工作域菜单\n"
     echo -n "   请选择打包 SUPER 的大小："
     read device_size_option
 
@@ -80,6 +80,14 @@ function create_super_img {
         break
         ;;
       4)
+        device_size=$original_super_size
+        if ((device_size < total_size)); then
+          echo "   小于参考值，请执行其它选项。"
+          continue
+        fi
+        break
+        ;;
+      5)
         while true; do
           echo -n "   请输入自定义大小："
           read device_size
