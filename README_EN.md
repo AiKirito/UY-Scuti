@@ -15,8 +15,8 @@ Then you can start the tool by simply entering:
 
 **./start.sh**
 
-**This tool only supports img format partition files and the extraction of payload.bin in card flash package files.\
-Older versions of other formats of partition files are not supported and will not be supported.\
+**This tool only supports partition files in img format, regular ZIP ROM, Samsung TAR ROM, lz4 file extraction and payload.bin extraction.\
+It does not support old version partition files in other formats.\
 The first time you use this tool, you must read the following instructions carefully.\
 If you ask questions that are stated in the instructions without careful reading, I will ignore them.**
 
