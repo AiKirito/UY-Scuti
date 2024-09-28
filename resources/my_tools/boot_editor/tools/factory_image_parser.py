@@ -42,20 +42,31 @@ known_list = [
     ]
 
 unknown_list = [
-    "cmnlib.img", #Pixel3
     "abl.img", #Pixel3
     "aop.img",  #Pixel3
     "cmnlib64.img", #Pixel3
+    "cmnlib.img", #Pixel3
     "devcfg.img", #Pixel3
     "hyp.img", #Pixel3
     "keymaster.img", #Pixel3
     "modem.img", #Pixel3
-    "qupfw.img", #Pixel3
-    "tz.img", #Pixel3
-    "xbl.img", #Pixel3
-    "xbl_config.img", #Pixel3
     "pvmfw.img",  #Pixel7
-    "super_empty.img"
+    "qupfw.img", #Pixel3
+    "super_empty.img",
+    "tz.img", #Pixel3
+    "userdata.img",
+    "xbl_config.img", #Pixel3
+    "xbl.img", #Pixel3
+    "bl1.img", #Pixel8a
+    "bl2.img", #Pixel8a
+    "bl31.img", #Pixel8a
+    "gcf.img", #Pixel8a
+    "gsa.img", #Pixel8a
+    "gsa_bl1.img", #Pixel8a
+    "ldfw.img", #Pixel8a
+    "ldfw.img", #Pixel8a
+    "pbl.img", #Pixel8a
+    "tzsw.img", #Pixel8a
     ]
 
 tmp2 = "tmp2"
@@ -87,6 +98,7 @@ def prepare(zipFile):
             item = os.path.join(tmp1, item1, item2)
             log.info(">> %s" % item)
             if (item2.endswith(".zip")):
+                # show the zip file
                 log.info("+ %s" % item)
                 if not imgZip:
                     imgZip = item
@@ -108,7 +120,7 @@ def prepare(zipFile):
                 log.info("- %s" % item1)
                 list2.append(item1)
             else:
-                raise
+                raise Exception("Unknown image: %s" % item1)
     purgeFolder(tmp1)
     return (list1, list2)
 

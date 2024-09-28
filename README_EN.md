@@ -38,7 +38,7 @@ Main Menu
 
 Workspace Menu
 
-> Partition File Extraction: Supports the extraction of files with EROFS, EXT, F2FS, VBMETA, DTBO, BOOT, PAYLOAD, SUPER, SPARSE partition identifiers (special reminder, the file identifiers of Recovery.img and Boot.img are both BOOT, so they can both be extracted). Press ALL to extract all, press S to start simple recognition. The function of simple recognition is to automatically recognize the sub-partitions of the SUPER partition file for modification. The list of extracted partition files will only display recognizable partitions. If you find that the partition file you put in is not displayed, it means that the tool does not support the recognition of this partition file. The reason for this implementation is that unsupported files are meaningless to display on the list. At present, simple recognition supports standard SUPER sub-partition recognition, as well as Xiaomi Qualcomm, Xiaomi MTK, OnePlus, etc. If your model has other special SUPER structures, feedback to me, or add it yourself.
+> Partition File Extraction: Supports the extraction of files identified by EROFS, EXT, F2FS, VBMETA, DTBO, BOOT, PAYLOAD, SUPER, SPARSE, TAR, ZIP, and LZ4. Press ALL to extract all files, or press S to start simplified recognition. The purpose of simplified recognition is to automatically identify super and its sub-partitions under normal circumstances. For Samsung ROMs, it will also recognize optics.img and vbmeta files, depending on whether optics.img exists in the working directory. The extracted partition file list will only display recognizable partitions. If you find that the partition file you placed is not displayed, it means the tool does not support the recognition of that partition file. This implementation is because displaying unsupported files in the list is meaningless. It supports the recognition of super partitions for Xiaomi and OnePlus devices.
 
 > Partition File Packaging: Package the extracted partition files. If the original identifier is EROFS, EXT, F2FS, then you need to choose the packaging format after packaging, you can choose EROFS, EXT, F2FS packaging format, the original identifier is other supported formats, no need to choose, automatic recognition.
 
@@ -54,17 +54,27 @@ Workspace Menu
 
 ----
 
-## How to use UY Sct to complete a simple modification of a ROM (here is an example of HyperOS)?
-1. Create a workspace, the name allows Chinese English spaces and symbols allowed by Windows Explorer.
-2. Select the workspace.
-3. Move the img or payload.bin file to the created workspace directory, and then use the extraction function.
-4. Use simple recognition to automatically filter out SUPER sub-partitions, and then use all extractions.
-5. Use one-click modification, what needs to be modified, see the prompt for use.
-6. Package all extracted partition files, use all packages, whether to package EROFS or EXT4 depends on your kernel.
-7. Move the packaged sub-partition to the Extracted-files/super inside the selected workspace.
-8. Use the SUPER packaging function, ensure that the packaged dynamic partition is consistent with your device, the size will be automatically calculated, choose according to the prompt.
-9. Move the packaged SUPER partition to the Ready-to-flash/images directory of the selected workspace. Note that "simple recognition" has automatically moved other partitions to this!
-10. Use the packaging function, so a modified ROM production is completed.
+## HyperOS Modification Tutorial (Tested)
+1. **Create and select a workspace**: Create a new workspace and immediately select it.
+2. Move the ROM package or partition files into the workspace directory. If it's a ROM package, it will eventually be extracted into partition files.
+3. Use the simple recognition feature to automatically filter out the `SUPER` sub-partition, then use the extract all feature.
+4. Use the one-click modification feature. Follow the prompts to make the necessary modifications.
+5. Pack all the extracted partition files. The file system used for packing depends on your kernel.
+6. Move the packed sub-partitions into the `Extracted-files/super` directory within the selected workspace.
+7. Use the `SUPER` packing feature. Ensure the packed dynamic partition matches your device. The size will be automatically calculated. Follow the prompts to choose the appropriate options.
+8. Move the packed `SUPER` partition into the `Ready-to-flash/images` directory within the selected workspace. Note that the simple recognition feature has already moved the other partitions here!
+9. Use the `Fastboot(d)` packing feature. This completes the creation of a modified ROM.
+
+## OneUI Modification Tutorial (Untested)
+1. **Create and select a workspace**: Create a new workspace and immediately select it.
+2. Move the ROM package or partition files into the workspace directory. If it's a ROM package, it will eventually be extracted into partition files.
+3. Use the simple recognition feature to automatically filter out the `SUPER` sub-partition, then use the extract all feature.
+4. Use the one-click modification feature. Follow the prompts to make the necessary modifications. For Samsung devices, removing vbmeta verification is necessary.
+5. Pack all the extracted partition files. The file system used for packing depends on your kernel.
+6. Move the packed sub-partitions into the `Extracted-files/super` directory within the selected workspace.
+7. Use the `SUPER` packing feature. For Samsung devices, the packed `SUPER` partition file must match the official size.
+8. Move the packed `SUPER` partition into the `Ready-to-flash/images` directory within the selected workspace. Note that the simple recognition feature has already moved the other partitions here!
+9. Use the `Odin Rom` packing feature. This completes the creation of a modified Samsung ROM, but whether it can boot needs to be tested.
 
 ----
 

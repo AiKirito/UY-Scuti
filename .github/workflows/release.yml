@@ -32,10 +32,22 @@ jobs:
         release_name: UY-Scuti ${{ env.VERSION }} 
         draft: false 
         prerelease: false 
-        body:  
-          新的功能
-          移除 hyperos 设备与网络名称验证
-          修复了一键修改的一些 BUG
+        body: |
+          ## 更新内容
+          ### 新的功能
+          1. 现在 `super` 原始大小选项仅在 `super` 大小文件存在时才会显示。
+          2. 重构 Rom 包的相关功能已重写，现在在打包 Odin Rom 时会询问是否拥有独立基带分区文件，这两种取决于你的设备。
+          3. 7z 版本更新。
+          4. 移除 vbmeta 校验的功能已添加到一键修改。
+          5. 简易识别调整，对于三星 Rom，解压后它的逻辑还会保留 `optics.img` 以及 `vbmeta` 相关文件以与一键修改匹配。
+          
+          ## What's New
+          ### New Features
+          1. The `super` original size option now only appears when `super` size files are present.
+          2. Refactored Rom package functionality has been rewritten. When packaging Odin Rom, it will now ask if you have a separate baseband partition file, depending on your device.
+          3. Updated 7z version.
+          4. The feature to remove `vbmeta` verification has been added to the one-click modification.
+          5. Simplified recognition adjustments. For Samsung Rom, after extraction, its logic will retain `optics.img` and `vbmeta` related files to match the one-click modification.
  
     - name: Archive project 
       run: zip -r UY-Sct_${{ env.VERSION }}.zip . 
