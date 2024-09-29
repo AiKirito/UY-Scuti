@@ -3,7 +3,6 @@ function create_super_img {
   local is_sparse=$2
   local img_files=()
   
-  # Filter out files of type ext, f2fs, erofs
   for file in "$WORK_DIR/$current_workspace/Extracted-files/super/"*.img; do
     file_type=$(recognize_file_type "$file")
     if [[ "$file_type" == "ext" || "$file_type" == "f2fs" || "$file_type" == "erofs" ]]; then
@@ -11,26 +10,22 @@ function create_super_img {
     fi
   done
 
-  # Calculate the total bytes of all files in the super folder
   local total_size=0
   for img_file in "${img_files[@]}"; do
     file_type=$(recognize_file_type "$img_file")
-    # Calculate the size of the file
     file_size_bytes=$(stat -c%s "$img_file")
-    total_size=$(($total_size + $file_size_bytes))
+    total_size=$((total_size + file_size_bytes))
   done
-  remainder=$(($total_size % 4096))
+  remainder=$((total_size % 4096))
   if [ $remainder -ne 0 ]; then
-    total_size=$(($total_size + 4096 - $remainder))
+    total_size=$((total_size + 4096 - remainder))
   fi
 
-  # Define the size of extra space
-  local extra_space=$(( 100 * 1024 * 1024 * 1024 / 100 ))
+  local extra_space=$((100 * 1024 * 1024 * 1024 / 100))
 
-  # Adjust the value of total_size based on the partition type
   case "$partition_type" in
     "AB")
-      total_size=$(((total_size + extra_space) * 2 ))
+      total_size=$(((total_size + extra_space) * 2))
       ;;
     "ONLYA"|"VAB")
       total_size=$((total_size + extra_space))
@@ -38,67 +33,75 @@ function create_super_img {
   esac
   clear
 
-   while true; do
-  # Display the total bytes of all files in the SUPER folder
-    echo -e "\n   SUPER reference value: $total_size\n" 
-    # Try to read the value of the original_super_size file
-    if [ -f "$WORK_DIR/$current_workspace/Extracted-files/config/original_super_size" ]; then
-      original_super_size=$(cat "$WORK_DIR/$current_workspace/Extracted-files/config/original_super_size")
-      echo -e "   Original size: $original_super_size\n"
+  while true; do
+    local original_super_size=$(cat "$WORK_DIR/$current_workspace/Extracted-files/config/original_super_size" 2>/dev/null)
+    echo -e ""
+    echo -n "   [1] 9126805504    [2] $total_size --Auto Calculate"
+    if [ -n "$original_super_size" ]; then
+      echo -e "    [3] \e[31m$original_super_size\e[0m --Original Size\n"
+    else
+      echo -e "\n"
     fi
 
-    echo -e "   [1] 8.50 G    " "[2] 12.00 G    " "[3] 20.00 G\n"
-    echo -e "   [4] Custom input    " "[Q] Return to workspace menu\n"
-    echo -n "   Please select the size to package SUPER: "
+    echo -e "   [C] Custom Input    [Q] Return to Workspace Menu\n"
+    echo -n "   Please select the package size: "
     read device_size_option
 
-    # Set the value of device_size based on the user's choice
     case "$device_size_option" in
       1)
         device_size=9126805504
         if ((device_size < total_size)); then
-          echo "   Less than the reference value, please choose another option."
+          echo "   Less than auto-calculated size, please choose another option."
           continue
         fi
         break
         ;;
       2)
-        device_size=12884901888
+        device_size=$total_size
         if ((device_size < total_size)); then
-          echo "   Less than the reference value, please choose another option."
+          echo "   Less than auto-calculated size, please choose another option."
           continue
         fi
         break
         ;;
       3)
-        device_size=21474836480
-        if ((device_size < total_size)); then
-          echo "   Less than the reference value, please choose another option."
-          continue
+        if [ -n "$original_super_size" ]; then
+          device_size=$original_super_size
+          if ((device_size < total_size)); then
+            echo "   Less than auto-calculated size, please choose another option."
+            continue
+          fi
+          break
+        else
+          clear
+          echo -e "\n   Invalid choice, please re-enter."
         fi
-        break
         ;;
-      4)
+      C|c)
+        clear
         while true; do
-          echo -n "   Please enter the custom size: "
+          echo -e "\n   Note: Auto-calculated size is $total_size\n"
+          echo -e "   [Q] Return to Workspace Menu\n"
+          echo -n "   Please enter custom size: "
           read device_size
 
           if [[ "$device_size" =~ ^[0-9]+$ ]]; then
-            # If the input value is less than total_size, ask to re-enter
             if ((device_size < total_size)); then
-              echo "   The entered value is less than the reference value, please re-enter"
+              clear
+              echo -e "\n   The entered value is less than the auto-calculated size, please re-enter"
             else
               if ((device_size % 4096 == 0)); then
                 break 
               else
-                echo "   The entered value is not a multiple of 4096 bytes, please re-enter"
+                clear
+                echo -e "\n   The entered value is not a multiple of 4096 bytes, please re-enter"
               fi
             fi
           elif [ "${device_size,,}" = "q" ]; then
             return
           else
+            clear
             echo -e "\n   Invalid input, please re-enter"
-          # If the input is invalid, continue the loop
           fi
         done
         break
@@ -114,84 +117,73 @@ function create_super_img {
     esac
   done
 
-  clear # Clear the screen
+  clear
   echo -e "\n"
 
-  # Other parameters
-  metadata_size="65536"
-  block_size="4096"
-  super_name="super"
-  group_name="qti_dynamic_partitions"
-  group_name_a="${group_name}_a"
-  group_name_b="${group_name}_b"
+  local metadata_size="65536"
+  local block_size="4096"
+  local super_name="super"
+  local group_name="qti_dynamic_partitions"
+  local group_name_a="${group_name}_a"
+  local group_name_b="${group_name}_b"
 
-# Set the value of metadata_slots based on the partition type
-case "$partition_type" in
-  "AB"|"VAB")
-    metadata_slots="3"
-    ;;
-  *)
-    metadata_slots="2"
-    ;;
-esac
+  case "$partition_type" in
+    "AB"|"VAB")
+      metadata_slots="3"
+      ;;
+    *)
+      metadata_slots="2"
+      ;;
+  esac
 
+  local params=""
 
-# Initialize the parameter string
-params=""
+  case "$is_sparse" in
+    "yes")
+      params+="--sparse"
+      ;;
+  esac
 
-case "$is_sparse" in
-  "yes")
-    params+="--sparse"
-    ;;
-esac
+  case "$partition_type" in
+    "VAB")
+      overhead_adjusted_size=$((device_size - 10 * 1024 * 1024))
+      params+=" --group \"$group_name_a:$overhead_adjusted_size\""
+      params+=" --group \"$group_name_b:$overhead_adjusted_size\""
+      params+=" --virtual-ab"
+      ;;
+    "AB")
+      overhead_adjusted_size=$(((device_size / 2) - 10 * 1024 * 1024))
+      params+=" --group \"$group_name_a:$overhead_adjusted_size\""
+      params+=" --group \"$group_name_b:$overhead_adjusted_size\""
+      ;;
+    *)
+      overhead_adjusted_size=$((device_size - 10 * 1024 * 1024))
+      params+=" --group \"$group_name:$overhead_adjusted_size\""
+      ;;
+  esac
 
-case "$partition_type" in
-  "VAB")
-    overhead_adjusted_size=$((device_size - 40 * 1024 * 1024))
-    params+=" --group \"$group_name_a:$overhead_adjusted_size\""
-    params+=" --group \"$group_name_b:$overhead_adjusted_size\""
-    params+=" --virtual-ab"
-    ;;
-  "AB")
-    overhead_adjusted_size=$(((device_size / 2) - 40 * 1024 * 1024))
-    params+=" --group \"$group_name_a:$overhead_adjusted_size\""
-    params+=" --group \"$group_name_b:$overhead_adjusted_size\""
-    ;;
-  *)
-    overhead_adjusted_size=$((device_size - 40 * 1024 * 1024))
-    params+=" --group \"$group_name:$overhead_adjusted_size\""
-    ;;
-esac
-
- # Calculate the size of each partition
   for img_file in "${img_files[@]}"; do
-    # Extract the file name from the file path
-    base_name=$(basename "$img_file")
-    partition_name=${base_name%.*}
-
-    # Calculate the size of the file
-    partition_size=$(stat -c%s "$img_file")
-
-    # Set the read-write attribute based on the file system type
-    file_type=$(recognize_file_type "$img_file")
+    local base_name=$(basename "$img_file")
+    local partition_name=${base_name%.*}
+    local partition_size=$(stat -c%s "$img_file")
+    local file_type=$(recognize_file_type "$img_file")
     if [[ "$file_type" == "ext" || "$file_type" == "f2fs" ]]; then
-      read_write_attr="none"
+      local read_write_attr="none"
     else
-      read_write_attr="readonly"
+      local read_write_attr="readonly"
     fi
 
-    # Set the partition group name parameter based on the partition type
     case "$partition_type" in
       "VAB")
-          params+=" --partition \"${partition_name}_a:$read_write_attr:$partition_size:$group_name_a\""
-          params+=" --image \"${partition_name}_a=$img_file\""
-          params+=" --partition \"${partition_name}_b:$read_write_attr:0:$group_name_b\""
+        params+=" --partition \"${partition_name}_a:$read_write_attr:$partition_size:$group_name_a\""
+        params+=" --image \"${partition_name}_a=$img_file\""
+        params+=" --partition \"${partition_name}_b:$read_write_attr:0:$group_name_b\""
         ;;
       "AB")
-          params+=" --partition \"${partition_name}_a:$read_write_attr:$partition_size:$group_name_a\""
-          params+=" --image \"${partition_name}_a=$img_file\""
-          params+=" --partition \"${partition_name}_b:$read_write_attr:$partition_size:$group_name_b\""
-          params+=" --image \"${partition_name}_b=$img_file\""
+        params+=" --partition \"${partition_name}_a:$read_write_attr:$partition_size:$group_name_a\""
+        params+=" --image \"${partition_name}_a=$img_file\""
+        params+=" --partition \"${partition_name}_b:$read_write_attr:$partition_size:$group_name_b\""
+        params+=" --image \"${partition_name}_b=$img_file\""
         ;;
       *)
         params+=" --partition \"$partition_name:$read_write_attr:$partition_size:$group_name\""
@@ -200,28 +192,28 @@ esac
     esac
   done
 
-              echo -e "Packaging SUPER partition, please wait...\n..................\n..................\n.................."
-              mkdir -p "$WORK_DIR/$current_workspace/Repacked"
-              start=$(python3 "$TOOL_DIR/get_right_time.py")
+  echo -e "Packaging SUPER partition, please wait...\n..................\n..................\n.................."
+  mkdir -p "$WORK_DIR/$current_workspace/Repacked"
+  local start=$(python3 "$TOOL_DIR/get_right_time.py")
 
-    eval "$TOOL_DIR/lpmake  \
-      --device-size \"$device_size\" \
-      --metadata-size \"$metadata_size\" \
-      --metadata-slots \"$metadata_slots\" \
-      --block-size \"$block_size\" \
-      --super-name \"$super_name\" \
-      --force-full-image \
-      $params \
-      --output \"$WORK_DIR/$current_workspace/Repacked/super.img\"" > /dev/null 2>&1
+  eval "$TOOL_DIR/lpmake  \
+    --device-size \"$device_size\" \
+    --metadata-size \"$metadata_size\" \
+    --metadata-slots \"$metadata_slots\" \
+    --block-size \"$block_size\" \
+    --super-name \"$super_name\" \
+    --force-full-image \
+    $params \
+    --output \"$WORK_DIR/$current_workspace/Repacked/super.img\"" > /dev/null 2>&1
 
   echo "SUPER partition packaged"
 
-              end=$(python3 "$TOOL_DIR/get_right_time.py")
-              runtime=$(echo "scale=3; if ($end - $start < 1) print 0; $end - $start" | bc)
-              echo "Time taken: $runtime seconds"
+  local end=$(python3 "$TOOL_DIR/get_right_time.py")
+  local runtime=$(echo "scale=3; if ($end - $start < 1) print 0; $end - $start" | bc)
+  echo "Time taken: $runtime seconds"
 
-  echo -n "Press any key to return to workspace menu..."
-  read
+  echo -n "Press any key to return to the workspace menu..."
+  read -n 1
 }
 
 function package_super_image {

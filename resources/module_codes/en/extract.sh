@@ -156,6 +156,7 @@ function extract_single_img {
 }
 
 function extract_img {
+  keep_clean
   mkdir -p "$WORK_DIR/$current_workspace/Extracted-files/super"
   while true; do
     shopt -s nullglob
@@ -166,68 +167,82 @@ function extract_img {
     if [ -e "${matched_files[0]}" ]; then
       displayed_files=()
       counter=0
+      img_only=true
       for i in "${!matched_files[@]}"; do
         if [ -f "${matched_files[$i]}" ]; then
           fs_type=$(recognize_file_type "${matched_files[$i]}")
           if [ "$fs_type" != "unknown" ]; then
             displayed_files+=("${matched_files[$i]}")
             counter=$((counter+1))
+            if [[ ! "${matched_files[$i]}" =~ \.img$ ]]; then
+              img_only=false
+            fi
           fi
         fi
       done
       while true; do
-        echo -e "\n   Current workspace files:\n"
+        echo -e "\n   Files in the current workspace:\n"
         for i in "${!displayed_files[@]}"; do
           fs_type_upper=$(echo "$(recognize_file_type "${displayed_files[$i]}")" | awk '{print toupper($0)}')
           printf "   \033[92m[%02d] %s —— %s\033[0m\n\n" "$((i+1))" "$(basename "${displayed_files[$i]}")" "$fs_type_upper"
         done
-        echo -e "   [ALL] Extract all    [S] Simple recognition    [Q] Return to the previous menu\n"
+        if $img_only; then
+          echo -e "   [ALL] Extract all    [S] Simple recognition    [Q] Return to the previous menu\n"
+        else
+          echo -e "   [S] Simple recognition    [Q] Return to the previous menu\n"
+        fi
         echo -n "   Please select the partition file to extract: "
         read choice
         choice=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
-        if [ "$choice" = "all" ]; then
-	  clear
-	  echo -e "\n"
+        if [ "$choice" = "all" ] && $img_only; then
+          clear
           for file in "${displayed_files[@]}"; do
+            echo -e "\n"
             extract_single_img "$file"
           done
-          echo -n "Press any key to return to the workspace menu... "
+          echo -n "Press any key to return to the workspace menu..."
           read -n 1
           clear
           return
         elif [ "$choice" = "s" ]; then
           mkdir -p "$WORK_DIR/$current_workspace/Ready-to-flash/images"
-          for file in "$WORK_DIR/$current_workspace"/*.img; do
+          for file in "$WORK_DIR/$current_workspace"/*.{img,elf,melf,mbn,bin,fv,pit}; do
             filename=$(basename "$file")
-            if [ "$filename" != "super.img" ] && ! grep -q "$filename" "$TOOL_DIR/super_search"; then
-              mv "$file" "$WORK_DIR/$current_workspace/Ready-to-flash/images/"
+            if [ -f "$WORK_DIR/$current_workspace/optics.img" ]; then
+              if [ "$filename" != "super.img" ] && [[ "$filename" != vbmeta*.img ]] && [[ "$filename" != "optics.img" ]] && [[ "$filename" != "vendor_boot.img" ]] && ! grep -q "$filename" "$TOOL_DIR/super_search"; then
+                mv "$file" "$WORK_DIR/$current_workspace/Ready-to-flash/images/" 2>/dev/null
+              fi
+            else
+              if [ "$filename" != "super.img" ] && ! grep -q "$filename" "$TOOL_DIR/super_search"; then
+                mv "$file" "$WORK_DIR/$current_workspace/Ready-to-flash/images/" 2>/dev/null
+              fi
             fi
           done
           clear
           break
         elif [ "$choice" = "q" ]; then
           return
-        elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#displayed_files[@]} ]; then
+        elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#displayed_files[@]}]; then
           file="${displayed_files[$((choice-1))]}"
           if [ -f "$file" ]; then
             clear
             echo -e "\n"
             extract_single_img "$file"
-            echo -n "Press any key to return to the file list... "
+            echo -n "Press any key to return to the file list..."
             read -n 1
             clear
             break
           else
-            echo "   The selected file does not exist. "
+            echo "   The selected file does not exist."
           fi
         else
           clear
-          echo -e "\n   Invalid selection, please re-enter. "
+          echo -e "\n   Invalid choice, please try again."
         fi
       done
     else
-      echo -e "\n   There are no files in the workspace. "
-      echo -n "   Press any key to return to the workspace menu... "
+      echo -e "\n   No files in the workspace."
+      echo -n "   Press any key to return to the workspace menu..."
       read -n 1
       return
     fi

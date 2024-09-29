@@ -1,5 +1,6 @@
 @ECHO OFF
 setlocal enabledelayedexpansion
+:HOME
 
 REM 设置机型
 set "right_device=Model_code"
@@ -9,16 +10,15 @@ set sg=1^>nul 2^>nul
 
 for /f "tokens=2 delims=:" %%a in ('chcp') do set "locale=%%a"
 
-:HOME
 cls
 
 if "!locale!"==" 936" (
-    set "confirm_switch={08}{\n}你确定要执行这个操作吗？{\n}{\n}如果确定，请输入 'I am sure'，否则，输入任意以退出：{\n}{\n}"
+    set "confirm_switch={08}{\n}你确定要执行这个操作吗？{\n}{\n}如果确定，请输入 'sure'，否则，输入任意以退出：{\n}{\n}"
     set "device_mismatch_msg=此 ROM 仅适配 !right_device! ，但你的设备是 !DeviceCode!"
     set "disabled_avb_verification=已禁用 Avb2.0 校验"
     set "exit_program={04}{\n}[4] {01}退出程序{#}{#}{\n}"
     set "execution_completed=执行完成，等待自动重启"
-    set "failure_status=刷入失败"
+    set "failure_status=因为某些原因，未能刷入"
     set "fastboot_mode={06}当前所处状态：Fastboot 模式{\n}"
     set "fastbootd_mode={06}当前所处状态：Fastbootd 模式{\n}"
     set "format_data_flash={04}{\n}[2] {01}格式化用户数据并刷入{#}{#}{\n}"
@@ -34,7 +34,7 @@ if "!locale!"==" 936" (
     set "title=盾牌座 UY 线刷工具"
     set "waiting_device={0D}————  正在等待设备  ————{#}{\n}{\n}"
 ) else (
-    set "confirm_switch={08}{\n}Are you sure you want to perform this operation?{\n}{\n}If sure, please enter 'I am sure', otherwise, enter anything to exit：{\n}{\n}"
+    set "confirm_switch={08}{\n}Are you sure you want to perform this operation?{\n}{\n}If sure, please enter 'sure', otherwise, enter anything to exit：{\n}{\n}"
     set "device_mismatch_msg=This ROM is only compatible with !right_device! , but your device is !DeviceCode!"
     set "disabled_avb_verification=Avb2.0 verification has been disabled"
     set "exit_program={04}{\n}[4] {01}Exit program{#}{#}{\n}"
@@ -123,7 +123,7 @@ if "!UserChoice!" == "1" (
 ) else if "!UserChoice!" == "3" (
     cho !confirm_switch!
     set /p Confirmation=
-    if /I "!Confirmation!" == "I am sure" (
+    if /I "!Confirmation!" == "sure" (
         if "!FastbootState!" == "!fastbootd_mode!" (
             cls
             echo.
@@ -146,13 +146,13 @@ echo.
 
 REM 对 vbmeta 分区文件专门刷入
 set "count=0"
-for /R images\ %%i in (*.img) do (
+for /R "images\" %%i in (*.img) do (
 	echo %%~ni | findstr /B "vbmeta" >nul && (
 		if "!DynamicPartitionType!"=="OnlyA" (
-			fastboot --disable-verity --disable-verification flash %%~ni %%i
+			fastboot --disable-verity --disable-verification flash "%%~ni" "%%i"
 		) else (
-			fastboot --disable-verity --disable-verification flash %%~ni_a %%i
-			fastboot --disable-verity --disable-verification flash %%~ni_b %%i
+			fastboot --disable-verity --disable-verification flash "%%~ni_a" "%%i"
+			fastboot --disable-verity --disable-verification flash "%%~ni_b" "%%i"
 		)
 		set /a "count+=1"
 	)
@@ -166,68 +166,49 @@ REM 遍历分区文件并刷入
 for /f "delims=" %%b in ('dir /b images\*.img ^| findstr /v /i "super.img" ^| findstr /v /i "preloader_raw.img" ^| findstr /v /i "cust.img" ^| findstr /v /i "recovery.img" ^| findstr /v /i /b "vbmeta"') do (
     set "filename=%%~nb"
     if "!DynamicPartitionType!"=="OnlyA" (
-        set "retry=0"
-        :retryA
-        "fastboot" flash %%~nb images\%%~nxb
+        fastboot flash "%%~nb" "images\%%~nxb"
         if "!errorlevel!"=="0" (
             echo !filename!: !success_status!
             echo.
         ) else (
             echo !filename!: !failure_status!
-            if "!retry!"=="0" (
-                set "retry=1"
-                echo !retry_message!
-                goto retryA
-            )
+            echo.
         )
     ) else (
-        set "retry=0"
-        :retryA
-        "fastboot" flash %%~nb_a images\%%~nxb
+        fastboot flash "%%~nb_a" "images\%%~nxb"
         if "!errorlevel!"=="0" (
             echo !filename!_a: !success_status!
         ) else (
             echo !filename!_a: !failure_status!
-            if "!retry!"=="0" (
-                set "retry=1"
-                echo !retry_message!
-                goto retryA
-            )
         )
-        set "retry=0"
-        :retryB
-        "fastboot" flash %%~nb_b images\%%~nxb
+        fastboot flash "%%~nb_b" "images\%%~nxb"
         if "!errorlevel!"=="0" (
             echo !filename!_b: !success_status!
             echo.
         ) else (
             echo !filename!_b: !failure_status!
-            if "!retry!"=="0" (
-                set "retry=1"
-                echo !retry_message!
-                goto retryB
-            )
+            echo.
         )
     )
 )
 
 REM MTK 机型专属
-if exist images\preloader_raw.img (
-    	fastboot flash preloader_a images\preloader_raw.img !sg!
-    	fastboot flash preloader_b images\preloader_raw.img !sg!
-    	fastboot flash preloader1 images\preloader_raw.img !sg!
-    	fastboot flash preloader2 images\preloader_raw.img !sg!
-	echo.
+if exist "images\preloader_raw.img" (
+    fastboot flash preloader_a "images\preloader_raw.img"
+    fastboot flash preloader_b "images\preloader_raw.img"
+    fastboot flash preloader1 "images\preloader_raw.img"
+    fastboot flash preloader2 "images\preloader_raw.img"
+    echo.
 )
 
 if exist images\cust.img (
-	fastboot flash cust images\cust.img
-	echo.
+    fastboot flash cust "images\cust.img"
+    echo.
 )
 
 if exist images\super.img (
-    	fastboot flash super images\super.img
-	echo.
+    fastboot flash super "images\super.img"
+    echo.
 )
 
 if "!SelectedOption!" == "1" (

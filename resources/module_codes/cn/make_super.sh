@@ -17,20 +17,20 @@ function create_super_img {
     file_type=$(recognize_file_type "$img_file")
     # 计算文件的大小
     file_size_bytes=$(stat -c%s "$img_file")
-    total_size=$(($total_size + $file_size_bytes))
+    total_size=$((total_size + file_size_bytes))
   done
-  remainder=$(($total_size % 4096))
+  remainder=$((total_size % 4096))
   if [ $remainder -ne 0 ]; then
-    total_size=$(($total_size + 4096 - $remainder))
+    total_size=$((total_size + 4096 - remainder))
   fi
 
   # 定义额外的空间大小
-  local extra_space=$(( 100 * 1024 * 1024 * 1024 / 100 ))
+  local extra_space=$((100 * 1024 * 1024 * 1024 / 100))
 
   # 根据分区类型调整 total_size 的值
   case "$partition_type" in
     "AB")
-      total_size=$(((total_size + extra_space) * 2 ))
+      total_size=$(((total_size + extra_space) * 2))
       ;;
     "ONLYA"|"VAB")
       total_size=$((total_size + extra_space))
@@ -38,19 +38,19 @@ function create_super_img {
   esac
   clear
 
-   while true; do
-  # 显示 SUPER 文件夹中所有文件的总字节数
-    echo -e "\n   参考值大小：$total_size\n" 
-
-    # 尝试读取 original_super_size 文件的值
-    if [ -f "$WORK_DIR/$current_workspace/Extracted-files/config/original_super_size" ]; then
-      original_super_size=$(cat "$WORK_DIR/$current_workspace/Extracted-files/config/original_super_size")
-      echo -e "   原始大小：$original_super_size\n"
+  while true; do
+    local original_super_size=$(cat "$WORK_DIR/$current_workspace/Extracted-files/config/original_super_size" 2>/dev/null)
+    # 根据是否能读取到 original_super_size 文件的值，显示不同的选项
+    echo -e ""
+    echo -n "   [1] 9126805504    [2] $total_size --自动计算"
+    if [ -n "$original_super_size" ]; then
+      echo -e "    [3] \e[31m$original_super_size\e[0m --原始大小\n"
+    else
+      echo -e "\n"
     fi
 
-    echo -e "   [1] 8.50 G    " "[2] 12.00 G    " "[3] 20.00 G\n"
-    echo -e "   [4] 自定义输入    " "[Q] 返回工作域菜单\n"
-    echo -n "   请选择打包 SUPER 的大小："
+    echo -e "   [C] 自定义输入    [Q] 返回工作域菜单\n"
+    echo -n "   请选择打包的大小："
     read device_size_option
 
     # 根据用户的选择，设置 device_size 的值
@@ -58,48 +58,58 @@ function create_super_img {
       1)
         device_size=9126805504
         if ((device_size < total_size)); then
-          echo "   小于参考值，请执行其它选项。"
+          echo "   小于自动计算大小，请执行其它选项。"
           continue
         fi
         break
         ;;
       2)
-        device_size=12884901888
+        device_size=$total_size
         if ((device_size < total_size)); then
-          echo "   小于参考值，请执行其它选项。"
+          echo "   小于自动计算大小，请执行其它选项。"
           continue
         fi
         break
         ;;
       3)
-        device_size=21474836480
-        if ((device_size < total_size)); then
-          echo "   小于参考值，请执行其它选项。"
-          continue
+        if [ -n "$original_super_size" ]; then
+          device_size=$original_super_size
+          if ((device_size < total_size)); then
+            echo "   小于自动计算大小，请执行其它选项。"
+            continue
+          fi
+          break
+        else
+          clear
+          echo -e "\n   无效的选择，请重新输入。"
         fi
-        break
         ;;
-      4)
+      C|c)
+        clear
         while true; do
+          echo -e "\n   提示：自动计算大小为 $total_size\n"
+          echo -e "   [Q] 返回工作域菜单\n"
           echo -n "   请输入自定义大小："
           read device_size
 
           if [[ "$device_size" =~ ^[0-9]+$ ]]; then
             # 如果输入值小于 total_size，要求重新输入
             if ((device_size < total_size)); then
-              echo "   输入的数值小于参考值，请重新输入"
+              clear
+              echo -e "\n   输入的数值小于自动计算大小，请重新输入"
             else
               if ((device_size % 4096 == 0)); then
                 break 
               else
-                echo "   输入的值不是 4096 字节数的倍数，请重新输入"
+                clear
+                echo -e "\n   输入的值不是 4096 字节数的倍数，请重新输入"
               fi
             fi
           elif [ "${device_size,,}" = "q" ]; then
             return
           else
+            clear
             echo -e "\n   无效的输入，请重新输入"
-          # 如果输入无效，继续循环
           fi
         done
         break
@@ -115,84 +125,83 @@ function create_super_img {
     esac
   done
 
-  clear #清除屏幕
+  clear # 清除屏幕
   echo -e "\n"
 
   # 其他参数
-  metadata_size="65536"
-  block_size="4096"
-  super_name="super"
-  group_name="qti_dynamic_partitions"
-  group_name_a="${group_name}_a"
-  group_name_b="${group_name}_b"
+  local metadata_size="65536"
+  local block_size="4096"
+  local super_name="super"
+  local group_name="qti_dynamic_partitions"
+  local group_name_a="${group_name}_a"
+  local group_name_b="${group_name}_b"
 
-# 根据分区类型设置 metadata_slots 的值
-case "$partition_type" in
-  "AB"|"VAB")
-    metadata_slots="3"
-    ;;
-  *)
-    metadata_slots="2"
-    ;;
-esac
+  # 根据分区类型设置 metadata_slots 的值
+  case "$partition_type" in
+    "AB"|"VAB")
+      metadata_slots="3"
+      ;;
+    *)
+      metadata_slots="2"
+      ;;
+  esac
 
+  # 初始化参数字符串
+  local params=""
 
-# 初始化参数字符串
-params=""
+  case "$is_sparse" in
+    "yes")
+      params+="--sparse"
+      ;;
+  esac
 
-case "$is_sparse" in
-  "yes")
-    params+="--sparse"
-    ;;
-esac
+  case "$partition_type" in
+    "VAB")
+      overhead_adjusted_size=$((device_size - 10 * 1024 * 1024))
+      params+=" --group \"$group_name_a:$overhead_adjusted_size\""
+      params+=" --group \"$group_name_b:$overhead_adjusted_size\""
+      params+=" --virtual-ab"
+      ;;
+    "AB")
+      overhead_adjusted_size=$(((device_size / 2) - 10 * 1024 * 1024))
+      params+=" --group \"$group_name_a:$overhead_adjusted_size\""
+      params+=" --group \"$group_name_b:$overhead_adjusted_size\""
+      ;;
+    *)
+      overhead_adjusted_size=$((device_size - 10 * 1024 * 1024))
+      params+=" --group \"$group_name:$overhead_adjusted_size\""
+      ;;
+  esac
 
-case "$partition_type" in
-  "VAB")
-    overhead_adjusted_size=$((device_size - 40 * 1024 * 1024))
-    params+=" --group \"$group_name_a:$overhead_adjusted_size\""
-    params+=" --group \"$group_name_b:$overhead_adjusted_size\""
-    params+=" --virtual-ab"
-    ;;
-  "AB")
-    overhead_adjusted_size=$(((device_size / 2) - 40 * 1024 * 1024))
-    params+=" --group \"$group_name_a:$overhead_adjusted_size\""
-    params+=" --group \"$group_name_b:$overhead_adjusted_size\""
-    ;;
-  *)
-    overhead_adjusted_size=$((device_size - 40 * 1024 * 1024))
-    params+=" --group \"$group_name:$overhead_adjusted_size\""
-    ;;
-esac
-
- # 计算每个分区所拥有的大小
+  # 计算每个分区所拥有的大小
   for img_file in "${img_files[@]}"; do
     # 从文件路径中提取文件名
-    base_name=$(basename "$img_file")
-    partition_name=${base_name%.*}
+    local base_name=$(basename "$img_file")
+    local partition_name=${base_name%.*}
 
     # 计算文件的大小
-    partition_size=$(stat -c%s "$img_file")
+    local partition_size=$(stat -c%s "$img_file")
 
     # 根据文件系统类型设置 read-write 属性
-    file_type=$(recognize_file_type "$img_file")
+    local file_type=$(recognize_file_type "$img_file")
     if [[ "$file_type" == "ext" || "$file_type" == "f2fs" ]]; then
-      read_write_attr="none"
+      local read_write_attr="none"
     else
-      read_write_attr="readonly"
+      local read_write_attr="readonly"
     fi
 
     # 根据分区类型设置分区组名参数
     case "$partition_type" in
       "VAB")
-          params+=" --partition \"${partition_name}_a:$read_write_attr:$partition_size:$group_name_a\""
-          params+=" --image \"${partition_name}_a=$img_file\""
-          params+=" --partition \"${partition_name}_b:$read_write_attr:0:$group_name_b\""
+        params+=" --partition \"${partition_name}_a:$read_write_attr:$partition_size:$group_name_a\""
+        params+=" --image \"${partition_name}_a=$img_file\""
+        params+=" --partition \"${partition_name}_b:$read_write_attr:0:$group_name_b\""
         ;;
       "AB")
-          params+=" --partition \"${partition_name}_a:$read_write_attr:$partition_size:$group_name_a\""
-          params+=" --image \"${partition_name}_a=$img_file\""
-          params+=" --partition \"${partition_name}_b:$read_write_attr:$partition_size:$group_name_b\""
-          params+=" --image \"${partition_name}_b=$img_file\""
+        params+=" --partition \"${partition_name}_a:$read_write_attr:$partition_size:$group_name_a\""
+        params+=" --image \"${partition_name}_a=$img_file\""
+        params+=" --partition \"${partition_name}_b:$read_write_attr:$partition_size:$group_name_b\""
+        params+=" --image \"${partition_name}_b=$img_file\""
         ;;
       *)
         params+=" --partition \"$partition_name:$read_write_attr:$partition_size:$group_name\""
@@ -201,28 +210,28 @@ esac
     esac
   done
 
-              echo -e "正在打包 SUPER 分区，等待中...\n..................\n..................\n.................."
-              mkdir -p "$WORK_DIR/$current_workspace/Repacked"
-              start=$(python3 "$TOOL_DIR/get_right_time.py")
+  echo -e "正在打包 SUPER 分区，等待中...\n..................\n..................\n.................."
+  mkdir -p "$WORK_DIR/$current_workspace/Repacked"
+  local start=$(python3 "$TOOL_DIR/get_right_time.py")
 
-    eval "$TOOL_DIR/lpmake  \
-      --device-size \"$device_size\" \
-      --metadata-size \"$metadata_size\" \
-      --metadata-slots \"$metadata_slots\" \
-      --block-size \"$block_size\" \
-      --super-name \"$super_name\" \
-      --force-full-image \
-      $params \
-      --output \"$WORK_DIR/$current_workspace/Repacked/super.img\"" > /dev/null 2>&1
+  eval "$TOOL_DIR/lpmake  \
+    --device-size \"$device_size\" \
+    --metadata-size \"$metadata_size\" \
+    --metadata-slots \"$metadata_slots\" \
+    --block-size \"$block_size\" \
+    --super-name \"$super_name\" \
+    --force-full-image \
+    $params \
+    --output \"$WORK_DIR/$current_workspace/Repacked/super.img\"" > /dev/null 2>&1
 
   echo "SUPER 分区已打包"
 
-              end=$(python3 "$TOOL_DIR/get_right_time.py")
-              runtime=$(echo "scale=3; if ($end - $start < 1) print 0; $end - $start" | bc)
-              echo "耗时： $runtime 秒"
+  local end=$(python3 "$TOOL_DIR/get_right_time.py")
+  local runtime=$(echo "scale=3; if ($end - $start < 1) print 0; $end - $start" | bc)
+  echo "耗时： $runtime 秒"
 
   echo -n "按任意键返回工作域菜单..."
-  read
+  read -n 1
 }
 
 function package_super_image {

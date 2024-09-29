@@ -4,7 +4,7 @@ on:
   workflow_dispatch: 
  
 env: 
-  VERSION: '4.0.0' 
+  VERSION: '5.0.0' 
  
 jobs: 
   build: 
@@ -35,19 +35,23 @@ jobs:
         body: |
           ## 更新内容
           ### 新的功能
-          1. 现在 `super` 原始大小选项仅在 `super` 大小文件存在时才会显示。
-          2. 重构 Rom 包的相关功能已重写，现在在打包 Odin Rom 时会询问是否拥有独立基带分区文件，这两种取决于你的设备。
-          3. 7z 版本更新。
-          4. 移除 vbmeta 校验的功能已添加到一键修改。
+          1. 现在 `super` 原始大小选项仅在提取过一次 `super` 后才会显示。
+          2. 重构 Rom 包的相关功能已重写，现在在打包 Odin Rom 时会询问是否拥有独立基带分区文件，这两种取决于你的设备。（CSC 文件保留数据打包后续再加入）
+          3. 7z、boot editor 版本更新
+          4. 移除 vbmeta 校验的功能已添加到一键修改。（准备中）
           5. 简易识别调整，对于三星 Rom，解压后它的逻辑还会保留 `optics.img` 以及 `vbmeta` 相关文件以与一键修改匹配。
-          
-          ## What's New
+          6. 提取所有逻辑变化，仅在仅有 img 存在时才会显示。
+          7. 带回解码，编码功能。（后续）
+
+          ## Release Notes
           ### New Features
-          1. The `super` original size option now only appears when `super` size files are present.
-          2. Refactored Rom package functionality has been rewritten. When packaging Odin Rom, it will now ask if you have a separate baseband partition file, depending on your device.
-          3. Updated 7z version.
-          4. The feature to remove `vbmeta` verification has been added to the one-click modification.
-          5. Simplified recognition adjustments. For Samsung Rom, after extraction, its logic will retain `optics.img` and `vbmeta` related files to match the one-click modification.
+          1. The `super` original size option now only appears after extracting `super` once.
+          2. The ROM package-related functions have been rewritten. When packaging Odin ROM, it will ask if you have a separate baseband partition file, depending on your device. (CSC file data retention packaging will be added later)
+          3. Updated versions of 7z and boot editor.
+          4. The feature to remove vbmeta verification has been added to the one-click modification. (In preparation)
+          5. Simplified identification adjustments. For Samsung ROMs, after extraction, the logic will retain `optics.img` and `vbmeta` related files to match the one-click modification.
+          6. Extraction logic changes, only showing when only img exists.
+          7. Reintroduced decoding and encoding functions. (Coming soon)
  
     - name: Archive project 
       run: zip -r UY-Sct_${{ env.VERSION }}.zip . 

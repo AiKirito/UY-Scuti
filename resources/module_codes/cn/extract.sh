@@ -160,6 +160,7 @@ function extract_single_img {
 }
 
 function extract_img {
+  keep_clean
   mkdir -p "$WORK_DIR/$current_workspace/Extracted-files/super"
   while true; do
     shopt -s nullglob
@@ -170,12 +171,16 @@ function extract_img {
     if [ -e "${matched_files[0]}" ]; then
       displayed_files=()
       counter=0
+      img_only=true
       for i in "${!matched_files[@]}"; do
         if [ -f "${matched_files[$i]}" ]; then
           fs_type=$(recognize_file_type "${matched_files[$i]}")
           if [ "$fs_type" != "unknown" ]; then
             displayed_files+=("${matched_files[$i]}")
             counter=$((counter+1))
+            if [[ ! "${matched_files[$i]}" =~ \.img$ ]]; then
+              img_only=false
+            fi
           fi
         fi
       done
@@ -185,14 +190,18 @@ function extract_img {
           fs_type_upper=$(echo "$(recognize_file_type "${displayed_files[$i]}")" | awk '{print toupper($0)}')
           printf "   \033[92m[%02d] %s —— %s\033[0m\n\n" "$((i+1))" "$(basename "${displayed_files[$i]}")" "$fs_type_upper"
         done
-        echo -e "   [ALL] 提取所有    [S] 简易识别    [Q] 返回上级菜单\n"
+        if $img_only; then
+          echo -e "   [ALL] 提取所有    [S] 简易识别    [Q] 返回上级菜单\n"
+        else
+          echo -e "   [S] 简易识别    [Q] 返回上级菜单\n"
+        fi
         echo -n "   请选择要提取的分区文件："
         read choice
         choice=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
-        if [ "$choice" = "all" ]; then
-	  clear
+        if [ "$choice" = "all" ] && $img_only; then
+          clear
           for file in "${displayed_files[@]}"; do
-	    echo -e "\n"
+            echo -e "\n"
             extract_single_img "$file"
           done
           echo -n "按任意键返回工作域菜单..."
@@ -203,8 +212,14 @@ function extract_img {
           mkdir -p "$WORK_DIR/$current_workspace/Ready-to-flash/images"
           for file in "$WORK_DIR/$current_workspace"/*.{img,elf,melf,mbn,bin,fv,pit}; do
             filename=$(basename "$file")
-            if [ "$filename" != "super.img" ] && ! grep -q "$filename" "$TOOL_DIR/super_search"; then
-              mv "$file" "$WORK_DIR/$current_workspace/Ready-to-flash/images/"
+            if [ -f "$WORK_DIR/$current_workspace/optics.img" ]; then
+              if [ "$filename" != "super.img" ] && [[ "$filename" != vbmeta*.img ]] && [[ "$filename" != "optics.img" ]] && [[ "$filename" != "vendor_boot.img" ]] && ! grep -q "$filename" "$TOOL_DIR/super_search"; then
+                mv "$file" "$WORK_DIR/$current_workspace/Ready-to-flash/images/" 2>/dev/null
+              fi
+            else
+              if [ "$filename" != "super.img" ] && ! grep -q "$filename" "$TOOL_DIR/super_search"; then
+                mv "$file" "$WORK_DIR/$current_workspace/Ready-to-flash/images/" 2>/dev/null
+              fi
             fi
           done
           clear
