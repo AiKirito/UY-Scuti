@@ -78,9 +78,15 @@ Workspace Menu
 
 ----
 
-Thanks to: \
-1、 https://github.com/ColdWindScholar/TIK \
-2、 https://github.com/cubinator/ext4 \
-3、 https://github.com/nmeum/android-tools \
-4、 https://github.com/cfig/Android_boot_image_editor
-and so on......
+# Acknowledgements 🙏
+
+1. [**TIK**](https://github.com/ColdWindScholar/TIK) - Magic number reference.
+2. [**ext4**](https://github.com/cubinator/ext4) and [**extfstools**](https://github.com/nlitsme/extfstools) - Extracting ext image configuration files and files.
+3. [**android-tools**](https://github.com/nmeum/android-tools) - Providing a rich set of Android tools.
+4. [**Android_boot_image_editor**](https://github.com/cfig/Android_boot_image_editor) - Extracting and repacking vbmeta, boot, and vendor_boot.
+5. [**f2fsUnpack**](https://github.com/thka2016/f2fsUnpack) - Extracting f2fs files.
+6. [**payload-dumper-go**](https://github.com/ssut/payload-dumper-go) - Extracting payload.bin files.
+7. [**erofs-extract**](https://github.com/sekaiacg/erofs-extract) - Extracting erofs files.
+8. [**7zip**](https://github.com/ip7z/7zip/releases) - Extracting super partitions and repacking ROM packages.
+9. [**Apktool**](https://github.com/iBotPeaches/Apktool) - Decompiling.
+10. [**OmcTextDecoder**](https://github.com/fei-ke/OmcTextDecoder) - Samsung CSC encoding and decoding.

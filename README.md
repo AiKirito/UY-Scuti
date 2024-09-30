@@ -82,10 +82,17 @@
 
 <br><br><br>
 
-感谢： \
-1、 https://github.com/ColdWindScholar/TIK \
-2、 https://github.com/cubinator/ext4 \
-3、 https://github.com/nmeum/android-tools \
-4、 https://github.com/cfig/Android_boot_image_editor \
-5、 https://github.com/nlitsme/extfstools
-等等......
+---
+
+# 感谢 
+
+1. [**TIK**](https://github.com/ColdWindScholar/TIK) - 魔数参考。
+2. [**ext4**](https://github.com/cubinator/ext4) 和 [**extfstools**](https://github.com/nlitsme/extfstools) - ext 镜像配置文件和文件提取。
+3. [**android-tools**](https://github.com/nmeum/android-tools) - 提供了丰富的 Android 工具集。
+4. [**Android_boot_image_editor**](https://github.com/cfig/Android_boot_image_editor) - vbmeta、boot、vendor_boot 的提取与打包。
+5. [**f2fsUnpack**](https://github.com/thka2016/f2fsUnpack) - f2fs 文件提取。
+6. [**payload-dumper-go**](https://github.com/ssut/payload-dumper-go) - payload.bin 文件提取。
+7. [**erofs-extract**](https://github.com/sekaiacg/erofs-extract) - erofs 文件提取。
+8. [**7zip**](https://github.com/ip7z/7zip/releases) - super 分区提取及 Rom 包打包。
+9. [**Apktool**](https://github.com/iBotPeaches/Apktool) - 反编译。
+10. [**OmcTextDecoder**](https://github.com/fei-ke/OmcTextDecoder) - 三星 CSC 编码与解码。
