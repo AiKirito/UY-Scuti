@@ -11,7 +11,7 @@ source "$(dirname "$0")/resources/module_codes/en/extract.sh"
 source "$(dirname "$0")/resources/module_codes/en/make_super.sh"
 source "$(dirname "$0")/resources/module_codes/en/make_img.sh"
 source "$(dirname "$0")/resources/module_codes/en/rebuild_rom.sh"
-source "$(dirname "$0")/resources/my_tools/nice_rom/NiceRom.sh"
+source "$(dirname "$0")/resources/my_tools/nice_rom/NiceRom_en.sh"
 
 # Define the paths of the tools and working directories
 TOOL_DIR="$(dirname "$0")/resources/my_tools"

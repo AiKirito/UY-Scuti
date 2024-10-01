@@ -21,7 +21,7 @@ while true; do
         case $brand in
             "HyperOS")
                 echo "已选择 HyperOS"
-                options_order=("删除小爱翻译" "删除小爱语音组件" "删除小爱通话" "删除互联互通服务 ROOT 验证" "删除浏览器" "删除音乐" "删除视频" "删除钱包" "删除广告与分析组件" "删除 Joyose 云控" "删除自带输入法" "删除传送门" "删除智能助理" "删除搜索功能" "删除悬浮球" "删除应用商店" "删除服务与反馈" "删除系统更新" "删除家人守护" "删除下载管理器" "删除预装应用" "删除所有" "HyperOS 替换" "HyperOS 添加-product 分区" "禁用未签名验证" "禁用设备与热点名称检测" "调用原生安装器" "禁止主题还原" "添加新特性" "关键性 deodex" "Deodex" "返回工作域菜单" "退出程序")
+                options_order=("删除小爱翻译" "删除小爱语音组件" "删除小爱通话" "删除互联互通服务 ROOT 验证" "删除浏览器" "删除音乐" "删除视频" "删除钱包" "删除广告与分析组件" "删除 Joyose 云控" "删除自带输入法" "删除传送门" "删除智能助理" "删除搜索功能" "删除悬浮球" "删除应用商店" "删除服务与反馈" "删除系统更新" "删除家人守护" "删除下载管理器" "删除预装应用" "删除所有" "HyperOS 替换" "HyperOS 添加-product 分区" "禁用未签名验证" "禁用设备与热点名称检测" "调用原生安装器" "禁止主题还原" "添加新特性" "关键性 deodex" "Deodex" "移除 Avb2.0 校验" "返回工作域菜单" "退出程序")
                 declare -A options
                 options=(
                     ["删除小爱翻译"]="AiAsstVision*"
@@ -44,14 +44,14 @@ while true; do
                     ["删除系统更新"]="Updater"
                     ["删除家人守护"]="MIUIgreenguard"
                     ["删除下载管理器"]="DownloadProviderUi"
-                    ["删除预装应用"]="MiShop* Health* SmartHome wps-lite XMRemoteController ThirdAppAssistant MIUIVirtualSim MIUIVipAccount MIUIMiDrive* MIUIHuanji* MIUIEmail* MIGalleryLockscreen* MIUIGameCenter* MIUINotes* MIUIDuokanReader* MIUIYoupin* MIUINewHome_Removable* system NewHome* MiRadio MiBugReport MiGameCenterSDKService"
+                    ["删除预装应用"]="MiShop* Health* SmartHome wps-lite XMRemoteController ThirdAppAssistant MIUIVirtualSim MIUIVipAccount MIUIMiDrive* MIUIHuanji* MIUIEmail* MIGalleryLockscreen* MIUIGameCenter* MIUINotes* MIUIDuokanReader* MIUIYoupin* MIUINewHome_Removable* system NewHome* MiRadio MiGameCenterSDKService"
                 )
                 brand_selected=true
                 break
                 ;;
             "OneUI")
                 echo "已选择 OneUI"
-options_order=("删除三星浏览器组件" "删除开机验证" "删除 Rec 恢复为官方" "删除主页负一屏" "删除动态表情相关组件" "删除 Bixby 语音组件" "删除微软输入法" "删除 Google 捆绑应用" "删除穿戴设备管理器" "删除系统更新" "删除主题商店" "删除 Knox 相关应用" "删除不常用应用" "删除所有" "ONEUI 替换" "ONEUI 添加-system 分区" "ONEUI 特性添加" "禁用未签名验证" "关键性 deodex" "Deodex" "返回工作域菜单" "退出程序")
+options_order=("删除三星浏览器组件" "删除开机验证" "删除 Rec 恢复为官方" "删除主页负一屏" "删除动态表情相关组件" "删除 Bixby 语音组件" "删除微软输入法" "删除 Google 捆绑应用" "删除穿戴设备管理器" "删除系统更新" "删除主题商店" "删除 Knox 相关应用" "删除不常用应用" "删除所有" "ONEUI 替换" "ONEUI 添加-system 分区" "ONEUI 特性添加" "禁用未签名验证" "关键性 deodex" "Deodex" "移除 Avb2.0 校验" "解码 csc" "编码 csc" "返回工作域菜单" "退出程序")
 declare -A options
                 options=(
                     ["删除三星浏览器组件"]="SBrowser SBrowserIntelligenceService"
@@ -137,6 +137,9 @@ for selection in "${selections[@]}"; do
             if [ "$opt" == "关键性 deodex" ]; then
                 services_jar_dex_selected=true
             fi
+            if [ "$opt" == "ONEUI 特性添加" ]; then
+                oneui_feature_selected=true
+            fi
         done
         if [ "$decode_selected" = true ] && [ "$encode_selected" = true ]; then
             echo "无效的选择：不能同时选择解码和编码"
@@ -146,10 +149,19 @@ for selection in "${selections[@]}"; do
             echo "无效的选择：不能同时选择 Deodex 和 关键性 deodex"
             continue
         fi
-	deleted=false
+        if [ "$oneui_feature_selected" = true ] && ([ "$decode_selected" = true ] || [ "$encode_selected" = true ]); then
+            echo "无效的选择：不能同时选择 ONEUI 特性添加 和 解码/编码 csc"
+            continue
+        fi
+        deleted=false
         for selection in "${selections[@]}"; do
             opt=${options_order[$((selection-1))]}
             case $opt in
+                "移除 Avb2.0 校验")
+                    echo "已选择 移除 Avb2.0 校验"
+                    remove_vbmeta_verification
+                    remove_extra_vbmeta_verification
+                    ;;
                 "禁用设备与热点名称检测")
                     echo "已选择 禁用设备与热点名称检测"
                     remove_device_and_network_verification

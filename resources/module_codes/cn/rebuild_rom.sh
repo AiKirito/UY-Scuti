@@ -98,6 +98,7 @@ function rebuild_rom {
                 echo -e "\n   [1] 是    "  "[2] 否\n"
                 echo -n "   选择你的操作："
                 read baseband_choice
+
                 if [[ "$baseband_choice" == "1" || "$baseband_choice" == "2" ]]; then
                     break
                 else
@@ -108,41 +109,86 @@ function rebuild_rom {
         else
             baseband_choice="2"
         fi
-	clear
+        clear
+        # 检测是否存在 .pit 文件
+        if compgen -G "$BASE_PATH/*.pit" > /dev/null; then
+            while true; do
+                echo -e "\n   你的设备是否需要保留数据？"
+                echo -e "\n   [1] 是    "  "[2] 否\n"
+                echo -n "   选择你的操作："
+                read retain_data_choice
+
+                if [[ "$retain_data_choice" == "1" || "$retain_data_choice" == "2" ]]; then
+                    break
+                else
+                    clear
+                    echo -e "\n   无效的选项，请重新输入。"
+                fi
+            done
+        else
+            retain_data_choice="2"
+        fi
+
+        clear
         echo -e "\n开始打包 Odin Rom..."
+
+        # 检查并添加文件到 AP_FILES 数组
         while IFS= read -r -d '' file; do
             AP_FILES+=("$(basename "$file")")
-        done < <(find "$BASE_PATH" -maxdepth 1 \( -name "boot.img" -o -name "dtbo.img" -o -name "init_boot.img" -o -name "misc.bin" -o -name "persist.img" -o -name "recovery.img" -o -name "super.img" -o -name "vbmeta.img" -o -name "vbmeta_system.img" -o -name "vendor_boot.img" -o -name "vm-bootsys.img" \) -print0)
-        if [[ "$baseband_choice" == "1" ]]; then
-            while IFS= read -r -d '' file; do
+        done < <(find "$BASE_PATH" -maxdepth 1 \( -name "boot.img" -o -name "dtbo.img" -o -name "init_boot.img" -o -name "misc.bin" -o -name "persist.img" -o -name "recovery.img" -o -name "super.img" -o -name "vbmeta_system.img" -o -name "vendor_boot.img" -o -name "vm-bootsys.img" \) -print0)
+
+        # 检查并添加 modem.bin 文件到相应的数组
+        while IFS= read -r -d '' file; do
+            if [[ "$baseband_choice" == "1" ]]; then
                 CP_FILES+=("$(basename "$file")")
-            done < <(find "$BASE_PATH" -maxdepth 1 -name "modem.bin" -print0)
-        else
-            while IFS= read -r -d '' file; do
+            else
                 AP_FILES+=("$(basename "$file")")
-            done < <(find "$BASE_PATH" -maxdepth 1 -name "modem.bin" -print0)
-        fi
+            fi
+        done < <(find "$BASE_PATH" -maxdepth 1 -name "modem.bin" -print0)
+
+        # 检查并添加文件到 BL_FILES 数组
         while IFS= read -r -d '' file; do
             BL_FILES+=("$(basename "$file")")
         done < <(find "$BASE_PATH" -maxdepth 1 \( -name "vbmeta.img" -o -regex ".*\.\(elf\|mbn\|bin\|fv\|melf\)" \) ! -name "modem.bin" ! -name "misc.bin" -print0)
+
+        # 检查并添加文件到 CSC_FILES 数组
         while IFS= read -r -d '' file; do
-            CSC_FILES+=("$(basename "$file")")
+            if [[ "$retain_data_choice" == "1" ]]; then
+                # 如果选择保留数据，只添加 cache.img、optics.img 和 prism.img
+                if [[ "$(basename "$file")" == "cache.img" || "$(basename "$file")" == "optics.img" || "$(basename "$file")" == "prism.img" ]]; then
+                    CSC_FILES+=("$(basename "$file")")
+                fi
+            else
+                # 否则，添加所有相关文件
+                CSC_FILES+=("$(basename "$file")")
+            fi
         done < <(find "$BASE_PATH" -maxdepth 1 \( -name "cache.img" -o -name "*.pit" -o -name "omr.img" -o -name "optics.img" -o -name "prism.img" \) -print0)
+
+        # 打包 AP 文件
         if [[ ${#AP_FILES[@]} -gt 0 ]]; then
             "$TOOL_DIR/7z" a -ttar -mx1 "$WORK_DIR/$current_workspace/Ready-to-flash/AP-${current_workspace}.tar" "${AP_FILES[@]/#/$BASE_PATH/}"
         fi
+
+        # 打包 BL 文件
         if [[ ${#BL_FILES[@]} -gt 0 ]]; then
             "$TOOL_DIR/7z" a -ttar -mx1 "$WORK_DIR/$current_workspace/Ready-to-flash/BL-${current_workspace}.tar" "${BL_FILES[@]/#/$BASE_PATH/}"
         fi
+
+        # 打包 CP 文件
         if [[ ${#CP_FILES[@]} -gt 0 ]]; then
             "$TOOL_DIR/7z" a -ttar -mx1 "$WORK_DIR/$current_workspace/Ready-to-flash/CP-${current_workspace}.tar" "${CP_FILES[@]/#/$BASE_PATH/}"
         fi
+
+        # 打包 CSC 文件
         if [[ ${#CSC_FILES[@]} -gt 0 ]]; then
             "$TOOL_DIR/7z" a -ttar -mx1 "$WORK_DIR/$current_workspace/Ready-to-flash/CSC-${current_workspace}.tar" "${CSC_FILES[@]/#/$BASE_PATH/}"
         fi
+
         echo -e "Odin Rom 打包完成"
+
         echo -n "按任意键返回工作域菜单..."
         read -n 1
+
     else
         echo "   取消打包，返回工作域菜单。"
     fi

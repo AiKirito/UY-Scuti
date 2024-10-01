@@ -1,5 +1,30 @@
 #!/bin/bash
-apktool_path="$(dirname "$0")/bin/all/apktool/apktool_2.9.3.jar"
+apktool_path="$(dirname "$0")/bin/all/apktool/apktool_2.10.0.jar"
+
+remove_extra_vbmeta_verification() {
+    declare -A printed_files
+    find "$onepath" -type f -name 'fstab.qcom' -print0 | while IFS= read -r -d '' file; do
+
+        sed -i 's/avb[^,]*,//g' "$file"
+        sed -i 's/,avb[^,]*,//g' "$file"
+        sed -i 's/,avb[^,]*$//g' "$file"
+
+        # 打印文件路径，如果尚未打印过
+        if [[ -z "${printed_files[$file]}" ]]; then
+            echo "$file"
+            printed_files["$file"]=1
+        fi
+    done
+}
+
+remove_vbmeta_verification() {
+    find "$onepath" -type f \( -name 'vbmeta*.avb.json' -o -name 'vendor_boot.avb.json' \) -print0 | while IFS= read -r -d '' file; do
+        sed -i '/"rollback_index" : [0-9]\+,/{
+        N
+        s/\("rollback_index" : [0-9]\+,\)\n    "flags" : [0-9]\+/\1\n    "flags" : 3/
+        }' "$file" && echo "$file"
+    done
+}
 
 remove_device_and_network_verification() {
   while IFS= read -r -d '' settings_apk_path; do
@@ -67,57 +92,65 @@ remove_device_and_network_verification() {
 }
 
 prevent_theme_reversion() {
-  while IFS= read -r -d '' system_ext_dir; do
-    if [[ -d "$system_ext_dir/framework" && -f "$system_ext_dir/framework/miui-framework.jar" ]]; then
-      java -jar "$apktool_path" d -f "$system_ext_dir/framework/miui-framework.jar" -o "$system_ext_dir/framework/miui-framework"
+  while IFS= read -r -d '' jarfile; do
+    if [[ -f "$jarfile" ]]; then
+      java -jar "$apktool_path" d -f "$jarfile" -o "${jarfile%.jar}"
+      echo "正在移除主题还原..."
 
-      echo "搜寻到的要修改的目标："
       while IFS= read -r -d '' smali_file; do
         echo "$smali_file"
-        sed -i '/invoke-static {.*}, Lmiui\/drm\/DrmManager;->isLegal(Landroid\/content\/Context;Ljava\/io\/File;Ljava\/io\/File;)Lmiui\/drm\/DrmManager$DrmResult;/,/move-result-object [a-z0-9]*/{s/invoke-static {.*}, Lmiui\/drm\/DrmManager;->isLegal(Landroid\/content\/Context;Ljava\/io\/File;Ljava\/io\/File;)Lmiui\/drm\/DrmManager$DrmResult;//;s/move-result-object \([a-z0-9]*\)/sget-object \1, Lmiui\/drm\/DrmManager\$DrmResult;->DRM_SUCCESS:Lmiui\/drm\/DrmManager\$DrmResult;/}' "$smali_file"
-      done < <(find "$system_ext_dir/framework/miui-framework" -name "ThemeReceiver.smali" -print0)
+        sed -i '/invoke-static {.*}, Lmiui\/drm\/DrmManager;->isLegal(Landroid\/content\/Context;Ljava\/io\/File;Ljava\/io\/File;)Lmiui\/drm\/DrmManager$DrmResult;/,/move-result-object [a-z0-9]*/{
+          s/invoke-static {.*}, Lmiui\/drm\/DrmManager;->isLegal(Landroid\/content\/Context;Ljava\/io\/File;Ljava\/io\/File;)Lmiui\/drm\/DrmManager$DrmResult;//
+          s/move-result-object \([a-z0-9]*\)/sget-object \1, Lmiui\/drm\/DrmManager\$DrmResult;->DRM_SUCCESS:Lmiui\/drm\/DrmManager\$DrmResult;/
+        }' "$smali_file"
+      done < <(find "${jarfile%.jar}" -name "ThemeReceiver.smali" -print0)
 
-      java -jar "$apktool_path" b -api 29 -c -f "$system_ext_dir/framework/miui-framework" -o "$system_ext_dir/framework/miui-framework.jar"
-      rm -rf "$system_ext_dir/framework/miui-framework"
-      echo "成功移除主题还原"
+      java -jar "$apktool_path" b -api 29 -c -f "${jarfile%.jar}" -o "$jarfile"
+      rm -rf "${jarfile%.jar}"
+      echo "成功修改"
     fi
-  done < <(find "$onepath" -type d -name 'system_ext' -print0)
+  done < <(find "$onepath" -name "miui-framework.jar" -print0)
 }
 
 invoke_native_installer() {
-  while IFS= read -r -d '' system_ext_dir; do
-    if [[ -d "$system_ext_dir/framework" && -f "$system_ext_dir/framework/miui-services.jar" ]]; then
-      java -jar "$apktool_path" d -f "$system_ext_dir/framework/miui-services.jar" -o "${system_ext_dir}/framework/miui-services"
-      echo "搜寻到的要修改的目标："
-      local smali_file="${system_ext_dir}/framework/miui-services/smali/com/android/server/pm/PackageManagerServiceImpl.smali"
+  while IFS= read -r -d '' jarfile; do
+    if [[ -f "$jarfile" ]]; then
+      java -jar "$apktool_path" d -f "$jarfile" -o "${jarfile%.jar}"
+      echo "正在调用 Android 原生安装器..."
+
+      local smali_file="${jarfile%.jar}/smali/com/android/server/pm/PackageManagerServiceImpl.smali"
       if [[ -f "$smali_file" ]]; then
         echo "$smali_file"
         sed -i '/.method public checkGTSSpecAppOptMode()V/,/.end method/c\.method public checkGTSSpecAppOptMode()V\n    .registers 1\n    return-void\n.end method' "$smali_file"
 
         sed -i '/.method public static isCTS()Z/,/.end method/c\.method public static isCTS()Z\n    .registers 1\n\n    const/4 v0, 0x1\n\n    return v0\n.end method' "$smali_file"
       fi
-      
-      java -jar "$apktool_path" b -c -f "${system_ext_dir}/framework/miui-services" -o "${system_ext_dir}/framework/miui-services.jar"
-      rm -rf "${system_ext_dir}/framework/miui-services"
-      echo "成功调用 Android 原生安装器"
+
+      java -jar "$apktool_path" b -c -f "${jarfile%.jar}" -o "$jarfile"
+      rm -rf "${jarfile%.jar}"
+      echo "成功修改"
     fi
-  done < <(find "$onepath" -type d -name 'system_ext' -print0)
+  done < <(find "$onepath" -name "miui-services.jar" -print0)
 }
 
 remove_unsigned_app_verification() {
   while IFS= read -r -d '' jarfile; do
     java -jar "$apktool_path" d -f -r "$jarfile" -o "${jarfile%.jar}"
-    echo "搜寻到的要修改的目标："
+    echo "开始移除未签名应用的校验..."
+
     while IFS= read -r -d '' smali_file; do
       if sed -n '/invoke-static {.*}, Landroid\/util\/apk\/ApkSignatureVerifier;->getMinimumSignatureSchemeVersionForTargetSdk(I)I/,/move-result [a-z0-9]*/p' "$smali_file" | grep -q 'invoke-static'; then
-        sed -i '/invoke-static {.*}, Landroid\/util\/apk\/ApkSignatureVerifier;->getMinimumSignatureSchemeVersionForTargetSdk(I)I/,/move-result [a-z0-9]*/{s/invoke-static {.*}, Landroid\/util\/apk\/ApkSignatureVerifier;->getMinimumSignatureSchemeVersionForTargetSdk(I)I//;s/move-result \([a-z0-9]*\)/const\/4 \1, 0x0/}' "$smali_file"
+        sed -i '/invoke-static {.*}, Landroid\/util\/apk\/ApkSignatureVerifier;->getMinimumSignatureSchemeVersionForTargetSdk(I)I/,/move-result [a-z0-9]*/{
+          s/invoke-static {.*}, Landroid\/util\/apk\/ApkSignatureVerifier;->getMinimumSignatureSchemeVersionForTargetSdk(I)I//
+          s/move-result \([a-z0-9]*\)/const\/4 \1, 0x0/
+        }' "$smali_file"
         echo "$smali_file"
       fi
     done < <(find "${jarfile%.jar}" -name '*.smali' -print0)
 
     java -jar "$apktool_path" b -c -f "${jarfile%.jar}" -o "$jarfile"
     rm -rf "${jarfile%.jar}"
-    echo "成功移除未签名应用的校验"
+    echo "成功修改"
   done < <(find "$onepath" -name "services.jar" -print0)
 }
 
@@ -135,18 +168,17 @@ copy_dir_xiaomi() {
                 dst_dir=${dirs[$src_dir]}
                 # 查找 bin/xiaomi/add_for_product/$src_dir 中名称匹配 file_locked_* 的子目录
                 while IFS= read -r -d '' subdir; do
-                    # 重命名子目录，去掉前缀 file_locked_ 并添加后缀 _Extra
+                    # 重命名子目录，去掉前缀 file_locked_
                     subdir_name=$(basename "$subdir")
-                    new_name="${subdir_name#file_locked_}_Extra"
+                    new_name="${subdir_name#file_locked_}"
                     # 创建新目录
                     mkdir -p "$dir/$dst_dir/$new_name"
                     # 查找子目录中的所有文件
                     while IFS= read -r -d '' file; do
-                        # 重命名文件，去掉前缀 Only_ 并添加后缀 _Extra
+                        # 重命名文件，去掉前缀 Only_
                         base_name=$(basename "$file" | cut -d. -f1)
                         extension=$(basename "$file" | cut -s -d. -f2)
                         new_base_name=${base_name#Only_}
-                        new_base_name="${new_base_name}_Extra"
                         if [ -n "$extension" ]; then
                             new_file_name="$new_base_name.$extension"
                         else
@@ -179,18 +211,17 @@ copy_dir_samsung() {
                 dst_dir=${dirs[$src_dir]}
                 # 查找 bin/samsung/add_for_system/$src_dir 中名称匹配 file_locked_* 的子目录
                 while IFS= read -r -d '' subdir; do
-                    # 重命名子目录，去掉前缀 file_locked_ 并添加后缀 _Extra
+                    # 重命名子目录，去掉前缀 file_locked_
                     subdir_name=$(basename "$subdir")
-                    new_name="${subdir_name#file_locked_}_Extra"
+                    new_name="${subdir_name#file_locked_}"
                     # 创建新目录
                     mkdir -p "$dir/$dst_dir/$new_name"
                     # 查找子目录中的所有文件
                     while IFS= read -r -d '' file; do
-                        # 重命名文件，去掉前缀 Only_ 并添加后缀 _Extra
+                        # 重命名文件，去掉前缀 Only_
                         base_name=$(basename "$file" | cut -d. -f1)
                         extension=$(basename "$file" | cut -s -d. -f2)
                         new_base_name=${base_name#Only_}
-                        new_base_name="${new_base_name}_Extra"
                         if [ -n "$extension" ]; then
                             new_file_name="$new_base_name.$extension"
                         else

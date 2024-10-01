@@ -98,52 +98,98 @@ function rebuild_rom {
                 echo -e "\n   [1] Yes    "  "[2] No\n"
                 echo -n "   Choose your action: "
                 read baseband_choice
+
                 if [[ "$baseband_choice" == "1" || "$baseband_choice" == "2" ]]; then
                     break
                 else
                     clear
-                    echo -e "\n   Invalid option, please re-enter."
+                    echo -e "\n   Invalid option, please try again."
                 fi
             done
         else
             baseband_choice="2"
         fi
-	clear
-        echo -e "\nStarting packaging Odin Rom..."
+        clear
+        # Check if .pit file exists
+        if compgen -G "$BASE_PATH/*.pit" > /dev/null; then
+            while true; do
+                echo -e "\n   Does your device need to retain data?"
+                echo -e "\n   [1] Yes    "  "[2] No\n"
+                echo -n "   Choose your action: "
+                read retain_data_choice
+
+                if [[ "$retain_data_choice" == "1" || "$retain_data_choice" == "2" ]]; then
+                    break
+                else
+                    clear
+                    echo -e "\n   Invalid option, please try again."
+                fi
+            done
+        else
+            retain_data_choice="2"
+        fi
+
+        clear
+        echo -e "\nStarting to package Odin Rom..."
+
+        # Check and add files to AP_FILES array
         while IFS= read -r -d '' file; do
             AP_FILES+=("$(basename "$file")")
-        done < <(find "$BASE_PATH" -maxdepth 1 \( -name "boot.img" -o -name "dtbo.img" -o -name "init_boot.img" -o -name "misc.bin" -o -name "persist.img" -o -name "recovery.img" -o -name "super.img" -o -name "vbmeta.img" -o -name "vbmeta_system.img" -o -name "vendor_boot.img" -o -name "vm-bootsys.img" \) -print0)
-        if [[ "$baseband_choice" == "1" ]]; then
-            while IFS= read -r -d '' file; do
+        done < <(find "$BASE_PATH" -maxdepth 1 \( -name "boot.img" -o -name "dtbo.img" -o -name "init_boot.img" -o -name "misc.bin" -o -name "persist.img" -o -name "recovery.img" -o -name "super.img" -o -name "vbmeta_system.img" -o -name "vendor_boot.img" -o -name "vm-bootsys.img" \) -print0)
+
+        # Check and add modem.bin file to the appropriate array
+        while IFS= read -r -d '' file; do
+            if [[ "$baseband_choice" == "1" ]]; then
                 CP_FILES+=("$(basename "$file")")
-            done < <(find "$BASE_PATH" -maxdepth 1 -name "modem.bin" -print0)
-        else
-            while IFS= read -r -d '' file; do
+            else
                 AP_FILES+=("$(basename "$file")")
-            done < <(find "$BASE_PATH" -maxdepth 1 -name "modem.bin" -print0)
-        fi
+            fi
+        done < <(find "$BASE_PATH" -maxdepth 1 -name "modem.bin" -print0)
+
+        # Check and add files to BL_FILES array
         while IFS= read -r -d '' file; do
             BL_FILES+=("$(basename "$file")")
         done < <(find "$BASE_PATH" -maxdepth 1 \( -name "vbmeta.img" -o -regex ".*\.\(elf\|mbn\|bin\|fv\|melf\)" \) ! -name "modem.bin" ! -name "misc.bin" -print0)
+
+        # Check and add files to CSC_FILES array
         while IFS= read -r -d '' file; do
-            CSC_FILES+=("$(basename "$file")")
+            if [[ "$retain_data_choice" == "1" ]]; then
+                # If retaining data, only add cache.img, optics.img, and prism.img
+                if [[ "$(basename "$file")" == "cache.img" || "$(basename "$file")" == "optics.img" || "$(basename "$file")" == "prism.img" ]]; then
+                    CSC_FILES+=("$(basename "$file")")
+                fi
+            else
+                # Otherwise, add all relevant files
+                CSC_FILES+=("$(basename "$file")")
+            fi
         done < <(find "$BASE_PATH" -maxdepth 1 \( -name "cache.img" -o -name "*.pit" -o -name "omr.img" -o -name "optics.img" -o -name "prism.img" \) -print0)
+
+        # Package AP files
         if [[ ${#AP_FILES[@]} -gt 0 ]]; then
             "$TOOL_DIR/7z" a -ttar -mx1 "$WORK_DIR/$current_workspace/Ready-to-flash/AP-${current_workspace}.tar" "${AP_FILES[@]/#/$BASE_PATH/}"
         fi
+
+        # Package BL files
         if [[ ${#BL_FILES[@]} -gt 0 ]]; then
             "$TOOL_DIR/7z" a -ttar -mx1 "$WORK_DIR/$current_workspace/Ready-to-flash/BL-${current_workspace}.tar" "${BL_FILES[@]/#/$BASE_PATH/}"
         fi
+
+        # Package CP files
         if [[ ${#CP_FILES[@]} -gt 0 ]]; then
             "$TOOL_DIR/7z" a -ttar -mx1 "$WORK_DIR/$current_workspace/Ready-to-flash/CP-${current_workspace}.tar" "${CP_FILES[@]/#/$BASE_PATH/}"
         fi
+
+        # Package CSC files
         if [[ ${#CSC_FILES[@]} -gt 0 ]]; then
             "$TOOL_DIR/7z" a -ttar -mx1 "$WORK_DIR/$current_workspace/Ready-to-flash/CSC-${current_workspace}.tar" "${CSC_FILES[@]/#/$BASE_PATH/}"
         fi
+
         echo -e "Odin Rom packaging completed"
-        echo -n "Press any key to return to workspace menu..."
+
+        echo -n "Press any key to return to the workspace menu..."
         read -n 1
+
     else
-        echo "   Packaging canceled, returning to workspace menu."
+        echo "   Packaging canceled, returning to the workspace menu."
     fi
 }
