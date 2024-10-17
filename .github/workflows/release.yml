@@ -4,7 +4,7 @@ on:
   workflow_dispatch: 
  
 env: 
-  VERSION: '6.0.0' 
+  VERSION: '6.1.0' 
  
 jobs: 
   build: 
@@ -44,6 +44,7 @@ jobs:
           7. 带回解码，编码功能。
           8. apktool 版本更新到2.10.0
           9. 一键修改工具添加了英文翻译支持
+          10. Erofs 打包工具更新，打包速度巨大提升，至少20倍，例如原本打包100秒，现在只需5秒
 
           ## Release Notes
           ### New Features
@@ -56,6 +57,7 @@ jobs:
           7. Reintroduced decoding and encoding functions.
           8. Updated apktool version to 2.10.0
           9. Added English translation support to the one-click modification tool.
+          10. The Erofs packaging tool has been updated, and the packaging speed has been greatly improved, at least 20 times. For example, packaging originally took 100 seconds, but now it only takes 5 seconds.
  
     - name: Archive project 
       run: zip -r UY-Sct_${{ env.VERSION }}.zip . 
