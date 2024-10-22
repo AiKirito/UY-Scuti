@@ -32,7 +32,7 @@ function create_super_img {
     "AB")
       total_size=$(((total_size + extra_space) * 2))
       ;;
-    "ONLYA"|"VAB")
+    "OnlyA"|"VAB")
       total_size=$((total_size + extra_space))
       ;;
   esac
