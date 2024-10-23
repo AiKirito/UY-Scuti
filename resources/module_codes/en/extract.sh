@@ -132,10 +132,6 @@ function extract_single_img {
       echo "Unknown file system type" 
       ;; 
   esac 
-    *)
-      echo "Unknown file system type"
-      ;;
-  esac
 
   for file in "$WORK_DIR/$current_workspace"/*; do
     base_name=$(basename "$file")
@@ -187,11 +183,11 @@ function extract_img {
           printf "   \033[92m[%02d] %s —— %s\033[0m\n\n" "$((i+1))" "$(basename "${displayed_files[$i]}")" "$fs_type_upper"
         done
         if $img_only; then
-          echo -e "   [ALL] Extract all    [S] Simple recognition    [Q] Return to the previous menu\n"
+          echo -e "   [ALL] Extract all    [S] Simple identify    [Q] Return to previous menu\n"
         else
-          echo -e "   [S] Simple recognition    [Q] Return to the previous menu\n"
+          echo -e "   [S] Simple identify    [Q] Return to previous menu\n"
         fi
-        echo -n "   Please select the partition file to extract: "
+        echo -n "   Please select the partition file to extract:"
         read choice
         choice=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
         if [ "$choice" = "all" ] && $img_only; then
@@ -222,7 +218,7 @@ function extract_img {
           break
         elif [ "$choice" = "q" ]; then
           return
-        elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#displayed_files[@]}]; then
+        elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#displayed_files[@]} ]; then
           file="${displayed_files[$((choice-1))]}"
           if [ -f "$file" ]; then
             clear
@@ -237,14 +233,15 @@ function extract_img {
           fi
         else
           clear
-          echo -e "\n   Invalid choice, please try again."
+          echo -e "\n   Invalid choice, please re-enter."
         fi
       done
     else
-      echo -e "\n   No files in the workspace."
+      echo -e "\n   There are no files in the workspace."
       echo -n "   Press any key to return to the workspace menu..."
       read -n 1
       return
     fi
   done
 }
+
