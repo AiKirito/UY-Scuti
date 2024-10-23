@@ -1,16 +1,21 @@
 name: Release
+
 on: 
-  push:
-    branches:
+  push: 
+    branches: 
       - main
+  workflow_dispatch:
+
 env: 
   VERSION: '6.3.0'
+
 jobs: 
-  build:
+  build: 
     runs-on: ubuntu-latest
-    steps:
+    steps: 
       - name: Checkout code
         uses: actions/checkout@v2
+        
       - name: Remove unwanted files
         run: |
           rm -rf my_workspaces/.my_workspaces
@@ -18,12 +23,13 @@ jobs:
           rm -rf README_EN.md
           rm -rf .git
           rm -rf .github
+
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
-        with:
+        env: 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with: 
           tag_name: ${{ env.VERSION }}
           release_name: UY-Scuti ${{ env.VERSION }}
           draft: false
@@ -40,7 +46,6 @@ jobs:
             07. 带回解码，编码功能。
             08. apktool 版本更新到2.10.0
             09. 一键修改工具添加了英文翻译支持
-
             10. Erofs 打包工具更新，打包速度巨大提升，至少20倍，例如原本打包100秒，现在只需5秒
             ## Release Notes
             ### New Features
@@ -54,15 +59,18 @@ jobs:
             08. Updated apktool version to 2.10.0
             09. Added English translation support to the one-click modification tool.
             10. The Erofs packaging tool has been updated, and the packaging speed has been greatly improved, at least 20 times. For example, packaging originally took 100 seconds, but now it only takes 5 seconds.
+
       - name: Archive project
         run: zip -r UY-Sct_${{ env.VERSION }}.zip .
+
       - name: Upload Release Asset
         id: upload_release_asset
         uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
-        with:
+        env: 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with: 
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./UY-Sct_${{ env.VERSION }}.zip
           asset_name: UY-Sct_${{ env.VERSION }}.zip
           asset_content_type: application/zip
+
