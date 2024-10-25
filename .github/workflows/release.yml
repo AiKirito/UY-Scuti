@@ -1,14 +1,11 @@
 name: Release
-
 on: 
   push: 
     branches: 
       - main
   workflow_dispatch:
-
 env: 
-  VERSION: '6.3.0'
-
+  VERSION: '7.0.0'
 jobs: 
   build: 
     runs-on: ubuntu-latest
@@ -23,7 +20,7 @@ jobs:
           rm -rf README_EN.md
           rm -rf .git
           rm -rf .github
-
+          
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -37,32 +34,19 @@ jobs:
           body: |
             ## 更新内容
             ### 新的功能
-            01. 现在 `super` 原始大小选项仅在提取过一次 `super` 后才会显示。
-            02. 重构 Rom 包的相关功能已重写，现在在打包 Odin Rom 时会询问是否拥有独立基带分区文件，这两种取决于你的设备。
-            03. 7z、boot editor 版本更新
-            04. 移除 vbmeta 校验的功能已添加到一键修改。
-            05. 简易识别调整，对于三星 Rom，解压后它的逻辑还会保留 `optics.img` 以及 `vbmeta` 相关文件以与一键修改匹配。
-            06. 提取所有逻辑变化，仅在仅有 img 存在时才会显示。
-            07. 带回解码，编码功能。
-            08. apktool 版本更新到2.10.0
-            09. 一键修改工具添加了英文翻译支持
-            10. Erofs 打包工具更新，打包速度巨大提升，至少20倍，例如原本打包100秒，现在只需5秒
+            01. super 打包前，如果你已经打包了子分区，现在会询问你是否要移动到 super 文件夹，这样无需手动移动。
+            02. 构建刷机包现在如果 Repacked 目录有打包的分区，会显示“轻松移动”，使用后会将它们快速移动到指定目录 Ready-to-flash/images。
+            03. 英文翻译得到标准优化，采用新方法翻译。
+
             ## Release Notes
             ### New Features
-            01. The `super` original size option now only appears after extracting `super` once.
-            02. The ROM package-related functions have been rewritten. When packaging Odin ROM, it will ask if you have a separate baseband partition file, depending on your device.
-            03. Updated versions of 7z and boot editor.
-            04. The feature to remove vbmeta verification has been added to the one-click modification.
-            05. Simplified identification adjustments. For Samsung ROMs, after extraction, the logic will retain `optics.img` and `vbmeta` related files to match the one-click modification.
-            06. Extraction logic changes, only showing when only img exists.
-            07. Reintroduced decoding and encoding functions.
-            08. Updated apktool version to 2.10.0
-            09. Added English translation support to the one-click modification tool.
-            10. The Erofs packaging tool has been updated, and the packaging speed has been greatly improved, at least 20 times. For example, packaging originally took 100 seconds, but now it only takes 5 seconds.
+            01. Before packaging the super, if you have already packaged subpartitions, it will now ask if you want to move them to the super folder, eliminating the need for manual moving.
+            02. When building the flash package, if there are packaged partitions in the Repacked directory, "Easy Move" will now appear, allowing you to quickly move them to the specified directory Ready-to-flash/images.
+            03. English translation has been standardized and optimized using a new method.
 
       - name: Archive project
         run: zip -r UY-Sct_${{ env.VERSION }}.zip .
-
+        
       - name: Upload Release Asset
         id: upload_release_asset
         uses: actions/upload-release-asset@v1

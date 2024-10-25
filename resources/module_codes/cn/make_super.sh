@@ -235,145 +235,169 @@ function create_super_img {
 }
 
 function package_super_image {
-  echo -e "\n"
-  mkdir -p "$WORK_DIR/$current_workspace/Extracted-files/super"
-
-  # 获取所有镜像文件
-  img_files=("$WORK_DIR/$current_workspace/Extracted-files/super/"*.img)
-  real_img_files=()
-  for file in "${img_files[@]}"; do
-    if [ -e "$file" ]; then
-      real_img_files+=("$file")
-    fi
-  done
-
-  # 检查是否有足够的镜像文件
-  if [ ${#real_img_files[@]} -lt 2 ]; then
-    echo "   SUPER 目录需要至少应包含两个镜像文件。"
-    read -n 1 -s -r -p "   按任意键返回工作域菜单..."
-    return
-  fi
-
-  # 检查是否有被禁止的文件
-  forbidden_files=()
-  for file in "${real_img_files[@]}"; do
-    filename=$(basename "$file")
-    if ! grep -q -x "$filename" "$TOOL_DIR/super_search"; then
-      forbidden_files+=("$file")
-    fi
-  done
-
-  # 如果有被禁止的文件，显示错误信息并返回
-  if [ ${#forbidden_files[@]} -gt 0 ]; then
-    echo -e "   禁止打包的分区文件：\n"
-    for file in "${forbidden_files[@]}"; do
-      echo -e "   \e[33m$(basename "$file")\e[0m\n"
-    done
-    read -n 1 -s -r -p "   按任意键返回工作域菜单..."
-    return
-  fi
-
-  # 询问用户是否要打包
-  while true; do
-    # 列出目标目录下的所有子文件，每个文件前面都有一个编号
-    echo -e "   SUPER 待打包子分区：\n"
-    for i in "${!img_files[@]}"; do
-      file_name=$(basename "${img_files[$i]}")
-      printf "   \e[96m[%02d] %s\e[0m\n\n" $((i+1)) "$file_name"
-    done
-
-    echo -e "\n   [Y] 打包 SUPER    "  "[N] 返回工作域菜单\n"
-    echo -n "   选择你想要执行的功能："
-    read is_pack
-    clear
-
-    # 处理用户的选择
-    case "$is_pack" in
-      Y|y)
-        # 用户选择了打包，询问分区类型和打包方式
-        while true; do
-          echo -e "\n   [1] OnlyA 动态分区    "  "[2] AB 动态分区    "  "[3] VAB 动态分区\n"
-          echo -e "   [Q] 返回工作域菜单\n"
-          echo -n "   请选择你的分区类型："
-          read partition_type
-
-          if [ "${partition_type,,}" = "q" ]; then  # 将用户输入转换为小写
-            echo "   已取消选择分区类型，返回工作域菜单。"
-            return
-          fi
-          clear
-
-          # 处理用户选择的分区类型
-          case "$partition_type" in
-            1|2|3)
-              # 用户选择了有效的分区类型，询问打包方式
-              while true; do
-                echo -e "\n   [1] 稀疏    "  "[2] 非稀疏\n"
-                echo -e "   [Q] 返回工作域菜单\n"
-                echo -n "   请选择打包方式："
-                read is_sparse
-
-                if [ "${is_sparse,,}" = "q" ]; then
-                  echo "   已取消选择，返回工作域菜单。"
-                  return
-                fi
-
-                # 处理用户选择的打包方式
-                case "$is_sparse" in
-                  1|2)
-                    break 
-                    ;;
-                  *)
-                    clear
-                    echo -e "\n   无效的选择，请重新输入。"
-                    ;;
-                esac
-              done
-              break 
-              ;;
-            *)
-              clear
-              echo -e "\n   无效的选择，请重新输入。"
-              # 如果用户输入无效，继续循环
-              ;;
-          esac
-        done
-        break 
-        ;;
-      N|n)
-        echo "已取消打包操作，返回上级菜单。"
-        return
-        ;;
-      *)
-        clear
-        echo -e "\n   无效的选择，请重新输入。"
-        # 如果用户输入无效，继续循环
-        ;;
-    esac
-  done
-
-  # 在这里添加你的代码，处理用户输入后面的部分
-  case "$partition_type-$is_sparse" in
-     1-1)
-        create_super_img "OnlyA" "yes"
-        ;;
-     1-2)
-        create_super_img "OnlyA" "no"
-        ;;
-     2-1)
-        create_super_img "AB" "yes"
-        ;;
-     2-2)
-        create_super_img "AB" "no"
-        ;;
-     3-1)
-        create_super_img "VAB" "yes"
-        ;;
-     3-2)
-        create_super_img "VAB" "no"
-        ;;
-    *)
-      echo "   无效的选择，请重新输入。"
-      ;;
-  esac
+	keep_clean
+	mkdir -p "$WORK_DIR/$current_workspace/Extracted-files/super"
+	# 检测 $WORK_DIR/$current_workspace/Repacked 内的 img 文件
+	detected_files=()
+	while IFS= read -r line; do
+		line=$(echo "$line" | xargs) # 去掉前后的空格
+		if [ -e "$WORK_DIR/$current_workspace/Repacked/$line" ]; then
+			detected_files+=("$WORK_DIR/$current_workspace/Repacked/$line")
+		fi
+	done < <(grep -oP '^[^#]+' "$TOOL_DIR/super_search")
+	# 询问是否移动到 super 文件夹
+	if [ ${#detected_files[@]} -gt 0 ]; then
+		while true; do
+			echo -e "\n   侦测到已打包的子分区：\n"
+			for file in "${detected_files[@]}"; do
+				echo -e "   \e[95m☑   $(basename "$file")\e[0m\n"
+			done
+			echo -e "\n   是否将这些文件移动到待打包目录？"
+			echo -e "\n   [1] 移动   [2] 不移动\n"
+			echo -n "   选择你的操作："
+			read move_files
+			clear
+			if [[ "$move_files" = "1" ]]; then
+				for file in "${detected_files[@]}"; do
+					mv "$file" "$WORK_DIR/$current_workspace/Extracted-files/super/"
+				done
+				break
+			elif [[ "$move_files" = "2" ]]; then
+				break
+			else
+				echo -e "\n   无效的选择，请重新输入。\n"
+			fi
+		done
+	fi
+	# 获取所有镜像文件
+	shopt -s nullglob
+	img_files=("$WORK_DIR/$current_workspace/Extracted-files/super/"*.img)
+	shopt -u nullglob
+	real_img_files=()
+	for file in "${img_files[@]}"; do
+		if [ -e "$file" ]; then
+			real_img_files+=("$file")
+		fi
+	done
+	# 检查是否有足够的镜像文件
+	if [ ${#real_img_files[@]} -lt 2 ]; then
+		echo -e "\n   SUPER 目录需要至少应包含两个镜像文件。"
+		read -n 1 -s -r -p "   按任意键返回工作域菜单..."
+		return
+	fi
+	# 检查是否有被禁止的文件
+	forbidden_files=()
+	for file in "${real_img_files[@]}"; do
+		filename=$(basename "$file")
+		if ! grep -q -x "$filename" "$TOOL_DIR/super_search"; then
+			forbidden_files+=("$file")
+		fi
+	done
+	# 如果有被禁止的文件，显示错误信息并返回
+	if [ ${#forbidden_files[@]} -gt 0 ]; then
+		echo -e "\n   拒绝执行，以下文件禁止合并\n"
+		for file in "${forbidden_files[@]}"; do
+			echo -e "   \e[33m☒   $(basename "$file")\e[0m\n"
+		done
+		read -n 1 -s -r -p "   按任意键返回工作域菜单..."
+		return
+	fi
+	# 询问用户是否要打包
+	while true; do
+		# 列出目标目录下的所有子文件，每个文件前面都有一个编号
+		echo -e "\n   待打包目录的子分区：\n"
+		for i in "${!img_files[@]}"; do
+			file_name=$(basename "${img_files[$i]}")
+			printf "   \e[96m[%02d] %s\e[0m\n\n" $((i + 1)) "$file_name"
+		done
+		echo -e "\n   [1] 开始打包   [Q] 返回工作域菜单\n"
+		echo -n "   选择你想要执行的功能："
+		read is_pack
+		is_pack=$(echo "$is_pack" | tr '[:upper:]' '[:lower:]')
+		clear
+		# 处理用户的选择
+		case "$is_pack" in
+		1)
+			# 用户选择了打包，询问分区类型和打包方式
+			while true; do
+				echo -e "\n   [1] OnlyA 动态分区   [2] AB 动态分区   [3] VAB 动态分区\n"
+				echo -e "   [Q] 返回工作域菜单\n"
+				echo -n "   请选择你的分区类型："
+				read partition_type
+				partition_type=$(echo "$partition_type" | tr '[:upper:]' '[:lower:]')
+				if [ "$partition_type" = "q" ]; then
+					echo "   已取消选择分区类型，返回工作域菜单。"
+					return
+				fi
+				clear
+				# 处理用户选择的分区类型
+				case "$partition_type" in
+				1 | 2 | 3)
+					# 用户选择了有效的分区类型，询问打包方式
+					while true; do
+						echo -e "\n   [1] 稀疏   [2] 非稀疏\n"
+						echo -e "   [Q] 返回工作域菜单\n"
+						echo -n "   请选择打包方式："
+						read is_sparse
+						is_sparse=$(echo "$is_sparse" | tr '[:upper:]' '[:lower:]')
+						if [ "$is_sparse" = "q" ]; then
+							echo "   已取消选择，返回工作域菜单。"
+							return
+						fi
+						# 处理用户选择的打包方式
+						case "$is_sparse" in
+						1 | 2)
+							break
+							;;
+						*)
+							clear
+							echo -e "\n   无效的选择，请重新输入。"
+							;;
+						esac
+					done
+					break
+					;;
+				*)
+					clear
+					echo -e "\n   无效的选择，请重新输入。"
+					;;
+				esac
+			done
+			break
+			;;
+		q)
+			echo "已取消打包操作，返回上级菜单。"
+			return
+			;;
+		*)
+			clear
+			echo -e "\n   无效的选择，请重新输入。"
+			;;
+		esac
+	done
+	# 在这里添加你的代码，处理用户输入后面的部分
+	case "$partition_type-$is_sparse" in
+	1-1)
+		create_super_img "OnlyA" "yes"
+		;;
+	1-2)
+		create_super_img "OnlyA" "no"
+		;;
+	2-1)
+		create_super_img "AB" "yes"
+		;;
+	2-2)
+		create_super_img "AB" "no"
+		;;
+	3-1)
+		create_super_img "VAB" "yes"
+		;;
+	3-2)
+		create_super_img "VAB" "no"
+		;;
+	*)
+		echo "   无效的选择，请重新输入。"
+		;;
+	esac
 }
+
