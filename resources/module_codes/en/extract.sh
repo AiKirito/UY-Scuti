@@ -4,14 +4,12 @@ function extract_single_img {
 	local base_name="${single_file_name%.*}"
 	fs_type=$(recognize_file_type "$single_file")
 	start=$(python3 "$TOOL_DIR/get_right_time.py")
-
-	# 在提取前清理一次目标文件夹
+	# Clean the target folder before extraction
 	if [[ "$fs_type" == "ext" || "$fs_type" == "erofs" || "$fs_type" == "f2fs" ||
 		"$fs_type" == "boot" || "$fs_type" == "dtbo" || "$fs_type" == "recovery" ||
 		"$fs_type" == "vbmeta" || "$fs_type" == "vendor_boot" ]]; then
 		rm -rf "$WORK_DIR/$current_workspace/Extracted-files/$base_name"
 	fi
-
 	case "$fs_type" in
 	sparse)
 		echo "Converting sparse partition file ${single_file_name}, please wait..."
@@ -25,18 +23,14 @@ function extract_single_img {
 		;;
 	super)
 		echo "Extracting SUPER partition file ${single_file_name}, please wait..."
-
-		# 读取 super 文件的字节数大小
+		# Read the size of the super file in bytes
 		super_size=$(stat -c%s "$single_file")
-
-		# 创建 config 文件夹并写入 original_super_size 文件
+		# Create config folder and write original_super_size file
 		mkdir -p "$WORK_DIR/$current_workspace/Extracted-files/config"
-
-		# 检查 original_super_size 文件是否存在且有内容
+		# Check if original_super_size file exists and is not empty
 		if [ ! -s "$WORK_DIR/$current_workspace/Extracted-files/config/original_super_size" ]; then
 			echo "$super_size" >"$WORK_DIR/$current_workspace/Extracted-files/config/original_super_size"
 		fi
-
 		"$TOOL_DIR/7z" e -bb1 -aoa "$single_file" -o"$WORK_DIR/$current_workspace"
 		rm "$single_file"
 		mkdir -p "$WORK_DIR/$current_workspace/Extracted-files/super"
@@ -78,25 +72,24 @@ function extract_single_img {
 		echo "${single_file_name} extraction completed"
 		;;
 	zip)
-		# 列出 zip 文件内容
+		# List the contents of the zip file
 		file_list=$("$TOOL_DIR/7z" l "$single_file")
-
-		# 检查是否存在 payload.bin 文件和 META-INF 文件夹
+		# Check if payload.bin and META-INF folder exist
 		if echo "$file_list" | grep -q "payload.bin" && echo "$file_list" | grep -q "META-INF"; then
-			echo "ROM flash package ${single_file_name} detected, please wait..."
+			echo "Detected ROM flashing package ${single_file_name}, please wait..."
 			"$TOOL_DIR/7z" e -bb1 -aoa "$single_file" "payload.bin" -o"$WORK_DIR/$current_workspace"
 			extract_single_img "$WORK_DIR/$current_workspace/payload.bin"
 			rm -rf "$single_file"
 			return
-			# 检查是否存在 images 文件夹和 .img 文件
+		# Check if images folder and .img files exist
 		elif echo "$file_list" | grep -q "images/" && echo "$file_list" | grep -q ".img"; then
-			echo "ROM flash package ${single_file_name} detected, please wait..."
+			echo "Detected ROM flashing package ${single_file_name}, please wait..."
 			"$TOOL_DIR/7z" e -bb1 -aoa "$single_file" "images/*.img" -o"$WORK_DIR/$current_workspace"
 			rm -rf "$single_file"
 			echo "${single_file_name} extraction completed"
-			# 检查是否存在 AP, BL, CP, CSC 开头的文件
+		# Check if files starting with AP, BL, CP, CSC exist
 		elif echo "$file_list" | grep -qE "AP|BL|CP|CSC"; then
-			echo "Odin format ROM package ${single_file_name} detected, please wait..."
+			echo "Detected Odin format ROM package ${single_file_name}, please wait..."
 			"$TOOL_DIR/7z" e -bb1 -aoa "$single_file" -o"$WORK_DIR/$current_workspace" -ir'!AP*' -ir'!BL*' -ir'!CP*' -ir'!CSC*'
 			for extracted_file in "$WORK_DIR/$current_workspace"/{AP*,BL*,CP*,CSC*}; do
 				if [ -f "$extracted_file" ]; then
@@ -117,7 +110,6 @@ function extract_single_img {
 		"$TOOL_DIR/7z" x "$single_file" -o"$WORK_DIR/$current_workspace" -xr'!meta-data'
 		rm -rf "$single_file"
 		echo "${single_file_name} extraction completed"
-
 		found_lz4=false
 		for lz4_file in "$WORK_DIR/$current_workspace"/*.lz4; do
 			if [ -f "$lz4_file" ]; then
@@ -125,7 +117,6 @@ function extract_single_img {
 				found_lz4=true
 			fi
 		done
-
 		if [ "$found_lz4" = true ]; then
 			return
 		fi
@@ -140,7 +131,6 @@ function extract_single_img {
 		echo "Unknown file system type"
 		;;
 	esac
-
 	for file in "$WORK_DIR/$current_workspace"/*; do
 		base_name=$(basename "$file")
 		if [[ ! -s $file ]] || [[ $base_name == *_b.img ]] || [[ $base_name == *_b ]] || [[ $base_name == *_b.ext ]]; then
@@ -153,12 +143,10 @@ function extract_single_img {
 			mv -f "$file" "${file%.ext}.img"
 		fi
 	done
-
 	end=$(python3 "$TOOL_DIR/get_right_time.py")
 	runtime=$(echo "scale=3; if ($end - $start < 1) print 0; $end - $start" | bc)
-	echo "Time consuming: $runtime seconds"
+	echo "Time taken: $runtime seconds"
 }
-
 function extract_img {
 	keep_clean
 	mkdir -p "$WORK_DIR/$current_workspace/Extracted-files/super"
@@ -185,17 +173,17 @@ function extract_img {
 				fi
 			done
 			while true; do
-				echo -e "\nFiles in the current working domain:\n"
+				echo -e "\n   Files in the current workspace:\n"
 				for i in "${!displayed_files[@]}"; do
 					fs_type_upper=$(echo "$(recognize_file_type "${displayed_files[$i]}")" | awk '{print toupper($0)}')
 					printf "   \033[92m[%02d] %s —— %s\033[0m\n\n" "$((i + 1))" "$(basename "${displayed_files[$i]}")" "$fs_type_upper"
 				done
 				if $img_only; then
-					echo -e "  [ALL] Extract all [S] Simple identification [Q] Return to the previous menu\n"
+					echo -e "   [ALL] Extract all    [S] Simple recognition    [Q] Return to the previous menu\n"
 				else
-					echo -e "  [S] Simple identification [Q] Return to the previous menu\n"
+					echo -e "   [S] Simple recognition    [Q] Return to the previous menu\n"
 				fi
-				echo -n "   please select the partition file to extract:"
+				echo -n "   Please select the partition file to extract: "
 				read choice
 				choice=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
 				if [ "$choice" = "all" ] && $img_only; then
@@ -237,15 +225,15 @@ function extract_img {
 						clear
 						break
 					else
-						echo "The file selected by   does not exist."
+						echo "   The selected file does not exist."
 					fi
 				else
 					clear
-					echo -e "\n Invalid selection, please re-enter."
+					echo -e "\n   Invalid selection, please re-enter."
 				fi
 			done
 		else
-			echo -e "\n There is no file in the working domain."
+			echo -e "\n   There are no files in the workspace."
 			echo -n "   Press any key to return to the workspace menu..."
 			read -n 1
 			return

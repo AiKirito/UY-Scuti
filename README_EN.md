@@ -42,11 +42,11 @@ Workspace Menu
 
 > Partition File Packaging: Package the extracted partition files. If the original identifier is EROFS, EXT, F2FS, then you need to choose the packaging format after packaging, you can choose EROFS, EXT, F2FS packaging format, the original identifier is other supported formats, no need to choose, automatic recognition.
 
-> SUPER Partition Packaging: First, you need to manually place the packaged sub-partition files in the Extracted-files/super folder of the workspace directory, and then use this function. The dynamic partition type should be consistent with the original. Suppose your model is a VAB dynamic partition, the packaging must also be a VAB dynamic partition. Whether to choose the sparse format may depend on whether the ROM supports it. For example, the official system of OnePlus, using the sparse format image will cause recognition problems.
+> SUPER Partition Packaging: Put the packaged sub-partition files in the Extracted-files/super folder of the working domain directory (if you package the super sub-partition, the automatic move feature will be displayed before packaging), and then you can use this function. The dynamic partition type should be consistent with the original one. You need to understand the dynamic partition type of your device. Whether to choose the sparse format depends on whether the ROM supports it.
 
-> One-click Modification: Built-in HyperOS, OneUI quick modification scheme, supports more content for HyperOS, there is no problem in modifying MIUI 14 and later versions, does not support old versions, old versions involve card rice problems, if you still want to modify, solve the card rice code problem yourself.
+> One-click Modification: Built-in quick modification solutions for HyperOS and OneUI.
 
-> Build Flash Package: Supports volume and full package compression, size customization, model code needs to strictly comply with your use of the model to avoid conflicts, and the default package name is consistent with the workspace name, this flash package is a line flash package, the script defaults to disable AVB2.0 verification, so no additional modification is required.
+> Build Flash Package: Use the newly added "Easy Move" feature to quickly move the packaged partition to the Ready-to-flash/images directory. Supports full-volume compression, and the size can be customized. The model code needs to be strictly in accordance with the model you use to avoid conflicts. The default package name is consistent with the working domain name. This flash package is an online flash package. The script turns off AVB2.0 verification by default, so no additional modification is required.
 
 > Return to Main Menu
 

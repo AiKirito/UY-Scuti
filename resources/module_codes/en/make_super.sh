@@ -2,20 +2,18 @@ function create_super_img {
 	local partition_type=$1
 	local is_sparse=$2
 	local img_files=()
-
-	# 筛选出文件类型为 ext, f2fs, erofs 的文件
+	# Filter out files with types ext, f2fs, erofs
 	for file in "$WORK_DIR/$current_workspace/Extracted-files/super/"*.img; do
 		file_type=$(recognize_file_type "$file")
 		if [[ "$file_type" == "ext" || "$file_type" == "f2fs" || "$file_type" == "erofs" ]]; then
 			img_files+=("$file")
 		fi
 	done
-
-	# 计算 super 文件夹中所有文件的总字节数
+	# Calculate the total bytes of all files in the super folder
 	local total_size=0
 	for img_file in "${img_files[@]}"; do
 		file_type=$(recognize_file_type "$img_file")
-		# 计算文件的大小
+		# Calculate file size
 		file_size_bytes=$(stat -c%s "$img_file")
 		total_size=$((total_size + file_size_bytes))
 	done
@@ -23,11 +21,9 @@ function create_super_img {
 	if [ $remainder -ne 0 ]; then
 		total_size=$((total_size + 4096 - remainder))
 	fi
-
-	# 定义额外的空间大小
+	# Define extra space size
 	local extra_space=$((100 * 1024 * 1024 * 1024 / 100))
-
-	# 根据分区类型调整 total_size 的值
+	# Adjust total_size based on partition type
 	case "$partition_type" in
 	"AB")
 		total_size=$(((total_size + extra_space) * 2))
@@ -37,28 +33,25 @@ function create_super_img {
 		;;
 	esac
 	clear
-
 	while true; do
 		local original_super_size=$(cat "$WORK_DIR/$current_workspace/Extracted-files/config/original_super_size" 2>/dev/null)
-		# 根据是否能读取到 original_super_size 文件的值，显示不同的选项
+		# Display different options based on whether original_super_size value can be read
 		echo -e ""
-		echo -n " [1] 9126805504 [2] $total_size --automatic calculation"
+		echo -n "   [1] 9126805504    [2] $total_size -- Automatic Calculation"
 		if [ -n "$original_super_size" ]; then
-			echo -e " [3] [31m$original_super_size [0m --original size\n"
+			echo -e "    [3] \e[31m$original_super_size\e[0m -- Original Size\n"
 		else
 			echo -e "\n"
 		fi
-
-		echo -e " [C] Custom input [Q] Return to workspace menu\n"
-		echo -n "  please select the package size:"
+		echo -e "   [C] Custom Input    [Q] Return to Workspace Menu\n"
+		echo -n "   Please select the package size: "
 		read device_size_option
-
-		# 根据用户的选择，设置 device_size 的值
+		# Set device_size based on user selection
 		case "$device_size_option" in
 		1)
 			device_size=9126805504
 			if ((device_size < total_size)); then
-				echo "  is smaller than the automatically calculated size, please execute other options."
+				echo "   Less than the automatically calculated size, please choose other options."
 				continue
 			fi
 			break
@@ -66,7 +59,7 @@ function create_super_img {
 		2)
 			device_size=$total_size
 			if ((device_size < total_size)); then
-				echo "  is smaller than the automatically calculated size, please execute other options."
+				echo "   Less than the automatically calculated size, please choose other options."
 				continue
 			fi
 			break
@@ -75,68 +68,64 @@ function create_super_img {
 			if [ -n "$original_super_size" ]; then
 				device_size=$original_super_size
 				if ((device_size < total_size)); then
-					echo "  is smaller than the automatically calculated size, please execute other options."
+					echo "   Less than the automatically calculated size, please choose other options."
 					continue
 				fi
 				break
 			else
 				clear
-				echo -e "\n Invalid selection, please re-enter."
+				echo -e "\n   Invalid selection, please re-enter."
 			fi
 			;;
 		C | c)
 			clear
 			while true; do
-				echo -e "\n Tip: The automatically calculated size is $total_size\n"
-				echo -e " [Q] Return to the workspace menu\n"
-				echo -n "  please enter a custom size:"
+				echo -e "\n   Hint: Automatically calculated size is $total_size\n"
+				echo -e "   [Q] Return to Workspace Menu\n"
+				echo -n "   Please enter a custom size: "
 				read device_size
-
 				if [[ "$device_size" =~ ^[0-9]+$ ]]; then
-					# 如果输入值小于 total_size，要求重新输入
+					# If input value is less than total_size, prompt to re-enter
 					if ((device_size < total_size)); then
 						clear
-						echo -e "\n The value entered is less than the automatically calculated size, please re-enter"
+						echo -e "\n   The entered value is less than the automatically calculated size, please re-enter"
 					else
 						if ((device_size % 4096 == 0)); then
 							break
 						else
 							clear
-							echo -e "\nThe entered value is not a multiple of 4096 bytes, please re-enter"
+							echo -e "\n   The entered value is not a multiple of 4096 bytes, please re-enter"
 						fi
 					fi
 				elif [ "${device_size,,}" = "q" ]; then
 					return
 				else
 					clear
-					echo -e "\n Invalid input, please re-enter"
+					echo -e "\n   Invalid input, please re-enter"
 				fi
 			done
 			break
 			;;
 		Q | q)
-			echo "  has canceled the packaging operation and returned to the work domain menu."
+			echo "   Packaging operation canceled, returning to workspace menu."
 			return
 			;;
 		*)
 			clear
-			echo -e "\n Invalid selection, please re-enter."
+			echo -e "\n   Invalid selection, please re-enter."
 			;;
 		esac
 	done
-
-	clear # 清除屏幕
+	clear # Clear the screen
 	echo -e "\n"
-
-	# 其他参数
+	# Other parameters
 	local metadata_size="65536"
 	local block_size="4096"
 	local super_name="super"
 	local group_name="qti_dynamic_partitions"
 	local group_name_a="${group_name}_a"
 	local group_name_b="${group_name}_b"
-
-	# 根据分区类型设置 metadata_slots 的值
+	# Set metadata_slots based on partition type
 	case "$partition_type" in
 	"AB" | "VAB")
 		metadata_slots="3"
@@ -145,16 +134,13 @@ function create_super_img {
 		metadata_slots="2"
 		;;
 	esac
-
-	# 初始化参数字符串
+	# Initialize parameter string
 	local params=""
-
 	case "$is_sparse" in
 	"yes")
 		params+="--sparse"
 		;;
 	esac
-
 	case "$partition_type" in
 	"VAB")
 		overhead_adjusted_size=$((device_size - 10 * 1024 * 1024))
@@ -172,25 +158,21 @@ function create_super_img {
 		params+=" --group \"$group_name:$overhead_adjusted_size\""
 		;;
 	esac
-
-	# 计算每个分区所拥有的大小
+	# Calculate the size each partition has
 	for img_file in "${img_files[@]}"; do
-		# 从文件路径中提取文件名
+		# Extract file name from file path
 		local base_name=$(basename "$img_file")
 		local partition_name=${base_name%.*}
-
-		# 计算文件的大小
+		# Calculate file size
 		local partition_size=$(stat -c%s "$img_file")
-
-		# 根据文件系统类型设置 read-write 属性
+		# Set read-write attribute based on file system type
 		local file_type=$(recognize_file_type "$img_file")
 		if [[ "$file_type" == "ext" || "$file_type" == "f2fs" ]]; then
 			local read_write_attr="none"
 		else
 			local read_write_attr="readonly"
 		fi
-
-		# 根据分区类型设置分区组名参数
+		# Set partition group name parameter based on partition type
 		case "$partition_type" in
 		"VAB")
 			params+=" --partition \"${partition_name}_a:$read_write_attr:$partition_size:$group_name_a\""
@@ -209,11 +191,9 @@ function create_super_img {
 			;;
 		esac
 	done
-
-	echo -e "Packaging SUPER partition, waiting...\n.............\n............ ....\n............."
+	echo -e "Packaging SUPER partition, please wait...\n..................\n..................\n.................."
 	mkdir -p "$WORK_DIR/$current_workspace/Repacked"
 	local start=$(python3 "$TOOL_DIR/get_right_time.py")
-
 	eval "$TOOL_DIR/lpmake  \
     --device-size \"$device_size\" \
     --metadata-size \"$metadata_size\" \
@@ -223,21 +203,17 @@ function create_super_img {
     --force-full-image \
     $params \
     --output \"$WORK_DIR/$current_workspace/Repacked/super.img\"" >/dev/null 2>&1
-
-	echo "SUPER partition has been packed"
-
+	echo "SUPER partition has been packaged"
 	local end=$(python3 "$TOOL_DIR/get_right_time.py")
 	local runtime=$(echo "scale=3; if ($end - $start < 1) print 0; $end - $start" | bc)
-	echo "Time consuming: $runtime seconds"
-
+	echo "Time taken: $runtime seconds"
 	echo -n "Press any key to return to the workspace menu..."
 	read -n 1
 }
-
 function package_super_image {
 	keep_clean
 	mkdir -p "$WORK_DIR/$current_workspace/Extracted-files/super"
-	# 检测 $WORK_DIR/$current_workspace/Repacked 内的 img 文件
+	# Detect img files in $WORK_DIR/$current_workspace/Repacked
 	detected_files=()
 	while IFS= read -r line; do
 		line=$(echo "$line" | xargs) # Remove leading and trailing spaces
@@ -245,16 +221,16 @@ function package_super_image {
 			detected_files+=("$WORK_DIR/$current_workspace/Repacked/$line")
 		fi
 	done < <(grep -oP '^[^#]+' "$TOOL_DIR/super_search")
-	# 询问是否移动到 super 文件夹
+	# Ask whether to move to the super folder
 	if [ ${#detected_files[@]} -gt 0 ]; then
 		while true; do
-			echo -e "\n   侦测到已打包的子分区：\n"
+			echo -e "\n   Detected packaged subpartitions:\n"
 			for file in "${detected_files[@]}"; do
 				echo -e "   \e[95m☑   $(basename "$file")\e[0m\n"
 			done
-			echo -e "\n Do you want to move these files to the directory to be packaged?"
-			echo -e "\n [1] Move [2] Don't move\n"
-			echo -n "  choose your operation:"
+			echo -e "\n   Do you want to move these files to the directory to be packaged?"
+			echo -e "\n   [1] Move   [2] Do not move\n"
+			echo -n "   Choose your operation: "
 			read move_files
 			clear
 			if [[ "$move_files" = "1" ]]; then
@@ -265,11 +241,11 @@ function package_super_image {
 			elif [[ "$move_files" = "2" ]]; then
 				break
 			else
-				echo -e "\nInvalid selection, please re-enter.\n"
+				echo -e "\n   Invalid selection, please re-enter.\n"
 			fi
 		done
 	fi
-	# 获取所有镜像文件
+	# Get all image files
 	shopt -s nullglob
 	img_files=("$WORK_DIR/$current_workspace/Extracted-files/super/"*.img)
 	shopt -u nullglob
@@ -279,13 +255,13 @@ function package_super_image {
 			real_img_files+=("$file")
 		fi
 	done
-	# 检查是否有足够的镜像文件
+	# Check if there are enough image files
 	if [ ${#real_img_files[@]} -lt 2 ]; then
-		echo -e "\n The SUPER directory needs to contain at least two image files."
-		read -n 1 -s -r -p "  Press any key to return to the workspace menu..."
+		echo -e "\n   The SUPER directory must contain at least two image files."
+		read -n 1 -s -r -p "   Press any key to return to the workspace menu..."
 		return
 	fi
-	# 检查是否有被禁止的文件
+	# Check for forbidden files
 	forbidden_files=()
 	for file in "${real_img_files[@]}"; do
 		filename=$(basename "$file")
@@ -293,65 +269,65 @@ function package_super_image {
 			forbidden_files+=("$file")
 		fi
 	done
-	# 如果有被禁止的文件，显示错误信息并返回
+	# If there are forbidden files, display error message and return
 	if [ ${#forbidden_files[@]} -gt 0 ]; then
-		echo -e "\n Refusal to execute, the following files are prohibited from merging\n"
+		echo -e "\n   Execution denied, the following files are forbidden to merge\n"
 		for file in "${forbidden_files[@]}"; do
-			echo -e "    u001b[33m☒   $(basename "$file")u001b[0m\n"
+			echo -e "   \e[33m☒   $(basename "$file")\e[0m\n"
 		done
-		read -n 1 -s -r -p "  Press any key to return to the workspace menu..."
+		read -n 1 -s -r -p "   Press any key to return to the workspace menu..."
 		return
 	fi
-	# 询问用户是否要打包
+	# Ask the user if they want to package
 	while true; do
-		# 列出目标目录下的所有子文件，每个文件前面都有一个编号
-		echo -e "\n Subpartition of the directory to be packed:\n"
+		# List all subfiles in the target directory, each file is prefixed with a number
+		echo -e "\n   Subpartitions in the directory to be packaged:\n"
 		for i in "${!img_files[@]}"; do
 			file_name=$(basename "${img_files[$i]}")
 			printf "   \e[96m[%02d] %s\e[0m\n\n" $((i + 1)) "$file_name"
 		done
-		echo -e "\n [1] Start packaging [Q] Return to workspace menu\n"
-		echo -n "  selects the function you want to perform:"
+		echo -e "\n   [1] Start Packaging   [Q] Return to Workspace Menu\n"
+		echo -n "   Choose the function you want to execute: "
 		read is_pack
 		is_pack=$(echo "$is_pack" | tr '[:upper:]' '[:lower:]')
 		clear
-		# 处理用户的选择
+		# Handle user selection
 		case "$is_pack" in
 		1)
-			# 用户选择了打包，询问分区类型和打包方式
+			# User chose to package, ask for partition type and packaging method
 			while true; do
-				echo -e "\n [1] OnlyA dynamic partition [2] AB dynamic partition [3] VAB dynamic partition\n"
-				echo -e " [Q] Return to the workspace menu\n"
-				echo -n "  please select your partition type:"
+				echo -e "\n   [1] OnlyA Dynamic Partition   [2] AB Dynamic Partition   [3] VAB Dynamic Partition\n"
+				echo -e "   [Q] Return to Workspace Menu\n"
+				echo -n "   Please select your partition type: "
 				read partition_type
 				partition_type=$(echo "$partition_type" | tr '[:upper:]' '[:lower:]')
 				if [ "$partition_type" = "q" ]; then
-					echo "  has deselected the partition type and returned to the workspace menu."
+					echo "   Partition type selection canceled, returning to workspace menu."
 					return
 				fi
 				clear
-				# 处理用户选择的分区类型
+				# Handle user-selected partition type
 				case "$partition_type" in
 				1 | 2 | 3)
-					# 用户选择了有效的分区类型，询问打包方式
+					# User selected a valid partition type, ask for packaging method
 					while true; do
-						echo -e "\n [1] sparse [2] non-sparse\n"
-						echo -e " [Q] Return to the workspace menu\n"
-						echo -n "  please select the packaging method:"
+						echo -e "\n   [1] Sparse   [2] Non-sparse\n"
+						echo -e "   [Q] Return to Workspace Menu\n"
+						echo -n "   Please select packaging method: "
 						read is_sparse
 						is_sparse=$(echo "$is_sparse" | tr '[:upper:]' '[:lower:]')
 						if [ "$is_sparse" = "q" ]; then
-							echo "  has been deselected, returning to the workspace menu."
+							echo "   Selection canceled, returning to workspace menu."
 							return
 						fi
-						# 处理用户选择的打包方式
+						# Handle user-selected packaging method
 						case "$is_sparse" in
 						1 | 2)
 							break
 							;;
 						*)
 							clear
-							echo -e "\n Invalid selection, please re-enter."
+							echo -e "\n   Invalid selection, please re-enter."
 							;;
 						esac
 					done
@@ -359,23 +335,23 @@ function package_super_image {
 					;;
 				*)
 					clear
-					echo -e "\n Invalid selection, please re-enter."
+					echo -e "\n   Invalid selection, please re-enter."
 					;;
 				esac
 			done
 			break
 			;;
 		q)
-			echo "The packaging operation has been canceled and returns to the previous menu."
+			echo "Packaging operation canceled, returning to the previous menu."
 			return
 			;;
 		*)
 			clear
-			echo -e "\n Invalid selection, please re-enter."
+			echo -e "\n   Invalid selection, please re-enter."
 			;;
 		esac
 	done
-	# 在这里添加你的代码，处理用户输入后面的部分
+	# Add your code here to handle the part after user input
 	case "$partition_type-$is_sparse" in
 	1-1)
 		create_super_img "OnlyA" "yes"
@@ -396,7 +372,7 @@ function package_super_image {
 		create_super_img "VAB" "no"
 		;;
 	*)
-		echo "  Invalid selection, please re-enter."
+		echo "   Invalid selection, please re-enter."
 		;;
 	esac
 }

@@ -5,7 +5,7 @@ on:
       - main
   workflow_dispatch:
 env: 
-  VERSION: '7.0.0'
+  VERSION: '8.0.0'
 jobs: 
   build: 
     runs-on: ubuntu-latest
@@ -34,15 +34,17 @@ jobs:
           body: |
             ## 更新内容
             ### 新的功能
-            01. super 打包前，如果你已经打包了子分区，现在会询问你是否要移动到 super 文件夹，这样无需手动移动。
-            02. 构建刷机包现在如果 Repacked 目录有打包的分区，会显示“轻松移动”，使用后会将它们快速移动到指定目录 Ready-to-flash/images。
-            03. 英文翻译得到标准优化，采用新方法翻译。
+            01. 修复了一个问题，该问题导致 ext 分区在特定情况下提取 selinux 上下文时报错。
+            02. 更新了菜单样式。
+            03. 新的英文翻译，应该能够正确工作了。
+            04.修复一个问题，该问题导致提取 ext 分区 selinux 上下文内容时产生了无效字符。
 
             ## Release Notes
             ### New Features
-            01. Before packaging the super, if you have already packaged subpartitions, it will now ask if you want to move them to the super folder, eliminating the need for manual moving.
-            02. When building the flash package, if there are packaged partitions in the Repacked directory, "Easy Move" will now appear, allowing you to quickly move them to the specified directory Ready-to-flash/images.
-            03. English translation has been standardized and optimized using a new method.
+            01. Fixed a problem that caused an error when extracting selinux context for ext partitions in some cases.
+            02. Updated menu style.
+            03. New English translation, should work properly.
+            04. Fixed a problem that caused invalid characters to be generated when extracting selinux context for ext partitions.
 
       - name: Archive project
         run: zip -r UY-Sct_${{ env.VERSION }}.zip .
