@@ -60,9 +60,12 @@ function extract_single_img {
 	ext)
 		echo "Extracting partition file ${single_file_name}, please wait..."
 		PYTHONDONTWRITEBYTECODE=1 python3 "$TOOL_DIR/ext4_info_get.py" "$single_file" "$WORK_DIR/$current_workspace/Extracted-files/config"
-		rm -rf "$WORK_DIR/$current_workspace/Extracted-files/$base_name"
-		mkdir -p "$WORK_DIR/$current_workspace/Extracted-files/$base_name"
-		"$TOOL_DIR/extract.ext" "$single_file" "./:$WORK_DIR/$current_workspace/Extracted-files/$base_name"
+		mkdir -p "$WORK_DIR/$current_workspace/Extracted-files/${base_name}"
+		sudo debugfs "$single_file" <<EOF >/dev/null 2>&1
+      rdump / $WORK_DIR/$current_workspace/Extracted-files/${base_name}
+EOF
+		sudo chmod a+w "$WORK_DIR/$current_workspace/Extracted-files/${base_name}"
+		sudo chmod 777 -R "$WORK_DIR/$current_workspace/Extracted-files/${base_name}"
 		echo "${single_file_name} extraction completed"
 		;;
 	payload)

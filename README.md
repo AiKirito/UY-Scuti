@@ -2,7 +2,7 @@
 **| [English](README_EN.md) | 简体中文 |**
 
 该工具的目的是为了解决解包，打包，修改 img 麻烦的问题\
-使用该工具在 WSL 和 Ubuntu 测试均可使用，安装所需要的包：
+使用该工具在 WSL2 和 Ubuntu 测试均可使用，安装所需要的包：
 
 **sudo apt update** \
 **sudo apt install lz4 python3 openjdk-21-jdk device-tree-compiler**

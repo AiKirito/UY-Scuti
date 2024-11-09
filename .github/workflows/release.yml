@@ -5,7 +5,7 @@ on:
       - main
   workflow_dispatch:
 env: 
-  VERSION: '8.0.0'
+  VERSION: '8.1.0'
 jobs: 
   build: 
     runs-on: ubuntu-latest
@@ -38,6 +38,7 @@ jobs:
             02. 更新了菜单样式。
             03. 新的英文翻译，应该能够正确工作了。
             04.修复一个问题，该问题导致提取 ext 分区 selinux 上下文内容时产生了无效字符。
+            5.由于某些 ext4 文件比较特别，对 ext4 的提取进行了调整，现在采用 debugfs 提取，需要 root
 
             ## Release Notes
             ### New Features
@@ -45,6 +46,7 @@ jobs:
             02. Updated menu style.
             03. New English translation, should work properly.
             04. Fixed a problem that caused invalid characters to be generated when extracting selinux context for ext partitions.
+            5. Because some ext4 files are special, the extraction of ext4 has been adjusted. Now debugfs is used for extraction, which requires root
 
       - name: Archive project
         run: zip -r UY-Sct_${{ env.VERSION }}.zip .

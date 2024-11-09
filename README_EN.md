@@ -2,7 +2,7 @@
 **| English | [Simplified Chinese](README.md) |**
 
 This tool is designed to solve the problems of unpacking, packing, and modifying img files.\
-This tool can be used for testing on both WSL and Ubuntu. Install the necessary packages with the following commands:
+This tool can be used for testing on both WSL2 and Ubuntu. Install the necessary packages with the following commands:
 
 **sudo apt update** \
 **sudo apt install lz4 python3 openjdk-21-jdk device-tree-compiler**
