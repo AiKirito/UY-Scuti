@@ -106,12 +106,16 @@ function package_single_partition {
 	3)
 		fs_type="ext4"
 		mkfs_tool_path="$(dirname "$0")/resources/my_tools/make.ext4fs"
-		# Calculate directory size
-		size=$(du -sb "$dir" | cut -f1)
-		if [ "$size" -lt $((2 * 1024 * 1024)) ]; then
-			size=$((size * 11 / 10))
+		size_file="$WORK_DIR/$current_workspace/Extracted-files/config/original_$(basename "$dir")_size"
+		if [ -f "$size_file" ] && [ -s "$size_file" ]; then
+			size=$(cat "$size_file")
 		else
-			size=$((size * 1025 / 1000))
+			size=$(du -sb "$dir" | cut -f1)
+			if [ "$size" -lt $((2 * 1024 * 1024)) ]; then
+				size=$((size * 11 / 10))
+			else
+				size=$((size * 1025 / 1000))
+			fi
 		fi
 		echo "Partition configuration files updated."
 		echo "Packaging the $(basename "$dir") partition files..."

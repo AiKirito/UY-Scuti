@@ -64,12 +64,16 @@ function extract_single_img {
 		echo "${single_file_name} 提取完成"
 		;;
 	ext)
+			while IFS= read -r line; do
+			image_name=$(basename "$line")
+			if [[ "$single_file_name" == "$image_name" ]]; then
+				echo "$(stat -c%s "$WORK_DIR/$current_workspace/$single_file_name")" >"$WORK_DIR/$current_workspace/Extracted-files/config/original_${base_name}_size"
+			fi
+		done <"$TOOL_DIR/super_search"
 		echo "正在提取分区文件 ${single_file_name}，请稍等..."
 		PYTHONDONTWRITEBYTECODE=1 python3 "$TOOL_DIR/ext4_info_get.py" "$single_file" "$WORK_DIR/$current_workspace/Extracted-files/config"
 		mkdir -p "$WORK_DIR/$current_workspace/Extracted-files/${base_name}"
-		sudo debugfs "$single_file" <<EOF >/dev/null 2>&1
-      rdump / $WORK_DIR/$current_workspace/Extracted-files/${base_name}
-EOF
+		echo "rdump / \"$WORK_DIR/${current_workspace}/Extracted-files/${base_name}\"" | sudo debugfs "$single_file" >/dev/null 2>&1
 		sudo chmod -R a+rwx "$WORK_DIR/$current_workspace/Extracted-files/${base_name}"
 		echo "${single_file_name} 提取完成"
 		;;

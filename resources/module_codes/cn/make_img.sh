@@ -117,14 +117,18 @@ function package_single_partition {
       "$sload_tool_path" -f "$dir" -C "$fs_config_file" -s "$file_contexts_file" -t "/$(basename "$dir")" "$output_image" -c -T "$utc" > /dev/null 2>&1
       ;;
     3)
-      fs_type="ext4"
-      mkfs_tool_path="$(dirname "$0")/resources/my_tools/make.ext4fs"
-      # 计算目录的大小
-      size=$(du -sb "$dir" | cut -f1)
-		if [ "$size" -lt $((2 * 1024 * 1024)) ]; then
-			size=$((size * 11 / 10))
+		fs_type="ext4"
+		mkfs_tool_path="$(dirname "$0")/resources/my_tools/make.ext4fs"
+		size_file="$WORK_DIR/$current_workspace/Extracted-files/config/original_$(basename "$dir")_size"
+		if [ -f "$size_file" ] && [ -s "$size_file" ]; then
+			size=$(cat "$size_file")
 		else
-			size=$((size * 1025 / 1000))
+			size=$(du -sb "$dir" | cut -f1)
+			if [ "$size" -lt $((2 * 1024 * 1024)) ]; then
+				size=$((size * 11 / 10))
+			else
+				size=$((size * 1025 / 1000))
+			fi
 		fi
       echo "分区配置文件更新完成"
       echo "正在打包 $(basename "$dir") 分区文件..."
