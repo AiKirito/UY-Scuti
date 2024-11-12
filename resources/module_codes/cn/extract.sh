@@ -70,8 +70,7 @@ function extract_single_img {
 		sudo debugfs "$single_file" <<EOF >/dev/null 2>&1
       rdump / $WORK_DIR/$current_workspace/Extracted-files/${base_name}
 EOF
-		sudo chmod a+w "$WORK_DIR/$current_workspace/Extracted-files/${base_name}"
-		sudo chmod 777 -R "$WORK_DIR/$current_workspace/Extracted-files/${base_name}"
+		sudo chmod -R a+rwx "$WORK_DIR/$current_workspace/Extracted-files/${base_name}"
 		echo "${single_file_name} 提取完成"
 		;;
 	payload)
