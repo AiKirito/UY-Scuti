@@ -121,14 +121,11 @@ function package_single_partition {
       mkfs_tool_path="$(dirname "$0")/resources/my_tools/make.ext4fs"
       # 计算目录的大小
       size=$(du -sb "$dir" | cut -f1)
-      if [ "$size" -lt $((1024 * 1024)) ]; then
-        size=$((size * 6))
-      elif [ "$size" -lt $((50 * 1024 * 1024)) ]; then
-        size=$((size * 12 / 10))
-      else
-        # 否则，将大小增加到原来的1.1倍
-        size=$((size * 11 / 10))
-      fi
+		if [ "$size" -lt $((2 * 1024 * 1024)) ]; then
+			size=$((size * 11 / 10))
+		else
+			size=$((size * 1025 / 1000))
+		fi
       echo "分区配置文件更新完成"
       echo "正在打包 $(basename "$dir") 分区文件..."
 
