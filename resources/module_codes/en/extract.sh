@@ -58,11 +58,6 @@ function extract_single_img {
 		echo "${single_file_name} extraction completed"
 		;;
 	ext)
-				while IFS= read -r line; do
-			image_name=$(basename "$line")
-			if [[ "$single_file_name" == "$image_name" ]]; then
-				echo "$(stat -c%s "$WORK_DIR/$current_workspace/$single_file_name")" >"$WORK_DIR/$current_workspace/Extracted-files/config/original_${base_name}_size"
-			fi
 		done <"$TOOL_DIR/super_search"
 		echo "Extracting partition file ${single_file_name}, please wait..."
 		PYTHONDONTWRITEBYTECODE=1 python3 "$TOOL_DIR/ext4_info_get.py" "$single_file" "$WORK_DIR/$current_workspace/Extracted-files/config"

@@ -104,22 +104,27 @@ function package_single_partition {
 		"$sload_tool_path" -f "$dir" -C "$fs_config_file" -s "$file_contexts_file" -t "/$(basename "$dir")" "$output_image" -c -T "$utc" >/dev/null 2>&1
 		;;
 	3)
-		fs_type="ext4"
-		mkfs_tool_path="$(dirname "$0")/resources/my_tools/make.ext4fs"
-		size_file="$WORK_DIR/$current_workspace/Extracted-files/config/original_$(basename "$dir")_size"
-		if [ -f "$size_file" ] && [ -s "$size_file" ]; then
-			size=$(cat "$size_file")
-		else
-			size=$(du -sb "$dir" | cut -f1)
-			if [ "$size" -lt $((2 * 1024 * 1024)) ]; then
-				size=$((size * 11 / 10))
-			else
-				size=$((size * 1025 / 1000))
-			fi
-		fi
 		echo "Partition configuration files updated."
+		fs_type="ext4"
+		mke2fs_tool_path="$(dirname "$0")/resources/my_tools/mke2fs"
+		e2fsdroid_tool_path="$(dirname "$0")/resources/my_tools/e2fsdroid"
+
+		size=$(du -sb "$dir" | cut -f1)
+		if [ "$size" -lt $((2 * 1024 * 1024)) ]; then
+			size=$((size * 11 / 10))
+		else
+			size=$((size * 1050 / 1000))
+		fi
+
 		echo "Packaging the $(basename "$dir") partition files..."
-		"$mkfs_tool_path" -J -l "$size" -b 4096 -S "$file_contexts_file" -L $(basename "$dir") -a "/$(basename "$dir")" -C "$fs_config_file" -T "$utc" "$output_image" "$dir" >/dev/null 2>&1
+		size_in_blocks=$((size / 4096))
+
+		"$mke2fs_tool_path" -O ^has_journal -L "$(basename "$dir")" -I 256 -M "/$(basename "$dir")" -m 0 -t ext4 -b 4096 "$output_image" "$size_in_blocks" >/dev/null 2>&1
+
+		"$e2fsdroid_tool_path" -e -T "$utc" -a "/$(basename "$dir")" -S "$file_contexts_file" -C "$fs_config_file" "$output_image" -f "$dir" >/dev/null 2>&1
+
+		echo "Packaging the $(basename "$dir") partition files..."
+
 		;;
 	4)
 		fs_type="f2fss"
