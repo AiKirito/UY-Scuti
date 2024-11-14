@@ -58,7 +58,6 @@ function extract_single_img {
 		echo "${single_file_name} extraction completed"
 		;;
 	ext)
-		done <"$TOOL_DIR/super_search"
 		echo "Extracting partition file ${single_file_name}, please wait..."
 		PYTHONDONTWRITEBYTECODE=1 python3 "$TOOL_DIR/ext4_info_get.py" "$single_file" "$WORK_DIR/$current_workspace/Extracted-files/config"
 		mkdir -p "$WORK_DIR/$current_workspace/Extracted-files/${base_name}"
