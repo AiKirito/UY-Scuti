@@ -1,29 +1,28 @@
 #!/bin/bash
-function keep_clean {
-	find "$(dirname "$0")" -type f -name "*Zone.Identifier*" -exec rm -rf {} \;
-}
+
 # 引入各个模块
-source "$(dirname "$0")/resources/module_codes/recognize_file_type.sh"
-source "$(dirname "$0")/resources/module_codes/switch_languages.sh"
-source "$(dirname "$0")/resources/module_codes/cn/extract.sh"
-source "$(dirname "$0")/resources/module_codes/cn/make_super.sh"
-source "$(dirname "$0")/resources/module_codes/cn/make_img.sh"
-source "$(dirname "$0")/resources/module_codes/cn/rebuild_rom.sh"
+for script in "$(dirname "$0")/resources/module_codes/cn"/*.sh \
+	"$(dirname "$0")/resources/module_codes/general"/*.sh; do
+	source "$script"
+done
 source "$(dirname "$0")/resources/my_tools/nice_rom/NiceRom.sh"
+
 # 定义工具和工作目录的路径
 TOOL_DIR="$(dirname "$0")/resources/my_tools"
 WORK_DIR="$(dirname "$0")/my_workspaces"
+
 # 定义当前工作域
 current_workspace=""
+
 function show_main_menu {
 	clear
 	echo -e "\033[38;2;135;206;235m"
 	echo -e "                               "
-	echo -e "  ──────────────── "
-	echo -e "                           "
-	echo -e "          盾牌座 UY        "
-	echo -e "                           "
-	echo -e "  ────────────────  "
+	echo -e "   ──────────────────────────"
+	echo -e "                             "
+	echo -e "           盾牌座 UY  "
+	echo -e "                             "
+	echo -e "   ──────────────────────────"
 	tput sgr0
 	echo -e "\n   [01] 选择工作域\n"
 	echo -e "   [02] 建立工作域\n"
@@ -32,15 +31,16 @@ function show_main_menu {
 	echo -e "   [05] 退出程序\n"
 	echo -n "   请选择一个操作："
 }
+
 # 显示工作域菜单的函数
 function show_workspace_menu {
 	echo -e "\033[38;2;135;206;235m"
 	echo -e "                               "
-	echo -e "  ──────────────── "
-	echo -e "                           "
-	echo -e "            工作域           "
-	echo -e "                           "
-	echo -e "  ────────────────  "
+	echo -e "   ────────────────────────"
+	echo -e "                             "
+	echo -e "           工作域        "
+	echo -e "                             "
+	echo -e "   ────────────────────────"
 	tput sgr0
 	echo -e "\n   [01] 分区文件提取\n"
 	echo -e "   [02] 分区文件打包\n"
@@ -51,6 +51,7 @@ function show_workspace_menu {
 	echo -e "   [07] 退出程序\n"
 	echo -n "   请选择一个操作："
 }
+
 function create_workspace {
 	while true; do
 		echo ""
@@ -61,7 +62,7 @@ function create_workspace {
 			echo -e "\n   你没有进行有效的输入。"
 			continue
 		fi
-		if echo "$workspace" | grep -Pvq "^[a-zA-Z0-9_\-\.\,\;\[\]\{\}\(\)\@\#\$\%\^\&\*\+\=\!\<\>\?\/\~\`\|\p{Han}\s]*$"; then
+		if echo "$workspace" | grep -Pvq "^[a-zA-Z0-9_\-\.\p{Han}—\s]*$"; then
 			clear
 			echo -e "\n   不允许的工作域名称。"
 		else
@@ -80,6 +81,7 @@ function create_workspace {
 		fi
 	done
 }
+
 function select_workspace {
 	local workspaces=("$WORK_DIR"/*)
 	if [ -z "$(ls -A "$WORK_DIR")" ]; then
@@ -88,6 +90,7 @@ function select_workspace {
 		read -n 1
 		return
 	fi
+
 	while true; do
 		echo -e "\n"
 		echo -e "   以下是所有可用的工作域：\n"
@@ -120,6 +123,7 @@ function select_workspace {
 		fi
 	done
 }
+
 function delete_workspace {
 	if [ -z "$(ls -A "$WORK_DIR")" ]; then
 		echo -e "\n"
@@ -127,6 +131,7 @@ function delete_workspace {
 		read -n 1
 		return
 	fi
+
 	while true; do
 		echo -e "\n"
 		echo -e "   以下是所有工作域：\n"
@@ -146,6 +151,7 @@ function delete_workspace {
 			workspace=$(ls -d "$WORK_DIR"/* | sed -n "${choice}p")
 			if [ -d "$workspace" ]; then
 				rm -rf "$workspace"
+				find "$TOOL_DIR/boot_editor" -mindepth 1 ! -regex '^'"$TOOL_DIR/boot_editor"'/\(aosp\|bbootimg\|src\|tools\|gradlew\)\(/.*\)?$' -exec rm -rf {} \; 2>/dev/null
 				echo "   工作域 $(basename "$workspace") 已删除。"
 				echo -n "   按任意键返回主菜单..."
 				read -n 1
@@ -160,6 +166,7 @@ function delete_workspace {
 		fi
 	done
 }
+
 # 在工作域菜单的函数中添加新功能
 function workspace_menu {
 	while true; do
@@ -203,6 +210,7 @@ function workspace_menu {
 		esac
 	done
 }
+
 function one_click_modify {
 	pushd . >/dev/null
 	local workspace_path=$(realpath "$WORK_DIR/$current_workspace")
@@ -210,7 +218,11 @@ function one_click_modify {
 	add_path "$workspace_path"
 	popd
 }
-# 主循环
+
+function keep_clean {
+	find "$(dirname "$0")" -type f -name "*Zone.Identifier*" -exec rm -rf {} \;
+}
+
 while true; do
 	clear
 	keep_clean

@@ -3,7 +3,7 @@ function rebuild_rom {
 	mkdir -p "$WORK_DIR/$current_workspace/Ready-to-flash/images"
 	while true; do
 		echo -e "\n   请把要刷入的分区文件放入在所选工作域目录的 Ready-to-flash/images 文件夹中"
-		echo -e "\n   [1] Fastboot(d) Rom    " "[2] Odin Rom    " "[Q] 取消打包\n"
+		echo -e "\n   [1] Fastboot(d) Rom    " "[2] Odin Rom    " "[Q] 返回上级菜单\n"
 
 		# 检查是否有 img 文件
 		if compgen -G "$WORK_DIR/$current_workspace/Repacked/*.img" >/dev/null; then
@@ -24,12 +24,12 @@ function rebuild_rom {
 	if [[ "$main_choice" == "1" ]]; then
 		clear
 		while true; do
-			echo -e "\n   [Q] 返回工作域菜单\n"
+			echo -e "\n   [Q] 返回上级菜单\n"
 			echo -n "   请输入你的机型："
 			read device_model
 			device_model=$(echo "$device_model" | tr '[:upper:]' '[:lower:]')
 			if [[ "$device_model" == "q" ]]; then
-				echo "   取消打包，返回工作域菜单。"
+				echo "   任务取消，返回上级菜单。"
 				return
 			elif [[ "$device_model" =~ ^[0-9a-zA-Z]+$ ]]; then
 				break
@@ -41,7 +41,7 @@ function rebuild_rom {
 		sed "s/set \"right_device=\w*\"/set \"right_device=$device_model\"/g" "$TOOL_DIR/flash_tool/FlashROM.bat" >"$TOOL_DIR/flash_tool/StartFlash.bat"
 		clear
 		while true; do
-			echo -e "\n   [1] 分卷压缩    " "[2] 完全压缩    " "[Q] 返回工作域菜单\n"
+			echo -e "\n   [1] 分卷压缩    " "[2] 完全压缩    " "[Q] 返回上级菜单\n"
 			echo -n "   请输入压缩方式："
 			read compression_choice
 			if [[ "$compression_choice" == "1" || "$compression_choice" == "2" || "$compression_choice" == "q" ]]; then
@@ -54,7 +54,7 @@ function rebuild_rom {
 		clear
 		if [[ "$compression_choice" == "1" ]]; then
 			while true; do
-				echo -e "\n   [Q] 返回工作域菜单\n"
+				echo -e "\n   [Q] 返回上级菜单\n"
 				echo -n "   请输入分卷大小："
 				read volume_size
 				if [[ "$volume_size" =~ ^[0-9]+[mgkMGK]$ || "$volume_size" == "q" ]]; then
@@ -65,7 +65,7 @@ function rebuild_rom {
 				fi
 			done
 			if [[ "$volume_size" == "q" ]]; then
-				echo "   取消打包，返回工作域菜单。"
+				echo "   任务取消，返回上级菜单。"
 				return
 			fi
 			clear
@@ -76,7 +76,7 @@ function rebuild_rom {
 			echo -e "Fastboot(d) Rom 打包完成"
 			end=$(python3 "$TOOL_DIR/get_right_time.py")
 			runtime=$(echo "scale=3; if ($end - $start < 1) print 0; $end - $start" | bc)
-			echo "耗时： $runtime 秒"
+			echo "耗时 $runtime 秒"
 		elif [[ "$compression_choice" == "2" ]]; then
 			start=$(python3 "$TOOL_DIR/get_right_time.py")
 			clear
@@ -86,15 +86,16 @@ function rebuild_rom {
 			echo -e "Fastboot(d) Rom 打包完成"
 			end=$(python3 "$TOOL_DIR/get_right_time.py")
 			runtime=$(echo "scale=3; if ($end - $start < 1) print 0; $end - $start" | bc)
-			echo "耗时： $runtime 秒"
+			echo "耗时 $runtime 秒"
 		else
-			echo "   取消打包，返回工作域菜单。"
+			echo "   任务取消，返回上级菜单。"
 			return
 		fi
-		echo -n "按任意键返回工作域菜单..."
+		echo -n "按任意键返回上级菜单..."
 		read -n 1
 	elif [[ "$main_choice" == "2" ]]; then
 		clear
+		start=$(python3 "$TOOL_DIR/get_right_time.py")
 		# 定义基础路径
 		BASE_PATH="$WORK_DIR/$current_workspace/Ready-to-flash/images"
 		# 初始化空数组
@@ -185,7 +186,10 @@ function rebuild_rom {
 			"$TOOL_DIR/7z" a -ttar -mx1 "$WORK_DIR/$current_workspace/Ready-to-flash/CSC-${current_workspace}.tar" "${CSC_FILES[@]/#/$BASE_PATH/}"
 		fi
 		echo -e "Odin Rom 打包完成"
-		echo -n "按任意键返回工作域菜单..."
+		end=$(python3 "$TOOL_DIR/get_right_time.py")
+		runtime=$(echo "scale=3; if ($end - $start < 1) print 0; $end - $start" | bc)
+		echo "耗时 $runtime 秒"
+		echo -n "按任意键返回上级菜单..."
 		read -n 1
 
 	elif [[ "$main_choice" == "m" ]]; then
@@ -194,7 +198,6 @@ function rebuild_rom {
 		rebuild_rom
 		return
 	else
-		echo "   取消打包，返回工作域菜单。"
+		echo "   任务取消，返回上级菜单。"
 	fi
 }
-

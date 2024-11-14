@@ -13,7 +13,7 @@ function create_super_img {
 	local total_size=0
 	for img_file in "${img_files[@]}"; do
 		file_type=$(recognize_file_type "$img_file")
-		# Calculate file size
+		# Calculate the size of the file
 		file_size_bytes=$(stat -c%s "$img_file")
 		total_size=$((total_size + file_size_bytes))
 	done
@@ -21,37 +21,40 @@ function create_super_img {
 	if [ $remainder -ne 0 ]; then
 		total_size=$((total_size + 4096 - remainder))
 	fi
-	# Define extra space size
+	# Define the size of the extra space
 	local extra_space=$((100 * 1024 * 1024 * 1024 / 100))
-	# Adjust total_size based on partition type
+	# Adjust the total_size based on the partition type
 	case "$partition_type" in
+	"VAB")
+		total_size=$((total_size + extra_space))
+		;;
 	"AB")
 		total_size=$(((total_size + extra_space) * 2))
 		;;
-	"OnlyA" | "VAB")
+	"OnlyA")
 		total_size=$((total_size + extra_space))
 		;;
 	esac
 	clear
 	while true; do
 		local original_super_size=$(cat "$WORK_DIR/$current_workspace/Extracted-files/config/original_super_size" 2>/dev/null)
-		# Display different options based on whether original_super_size value can be read
+		# Display different options based on whether the original_super_size file can be read
 		echo -e ""
-		echo -n "   [1] 9126805504    [2] $total_size -- Automatic Calculation"
+		echo -n "   [1] 9126805504    [2] $total_size -- Auto Calculated"
 		if [ -n "$original_super_size" ]; then
 			echo -e "    [3] \e[31m$original_super_size\e[0m -- Original Size\n"
 		else
 			echo -e "\n"
 		fi
-		echo -e "   [C] Custom Input    [Q] Return to Workspace Menu\n"
-		echo -n "   Please select the package size: "
+		echo -e "   [C] Custom Input    [Q] Return to Previous Menu\n"
+		echo -n "   Please select the size for packaging: "
 		read device_size_option
-		# Set device_size based on user selection
+		# Set the value of device_size based on user selection
 		case "$device_size_option" in
 		1)
 			device_size=9126805504
 			if ((device_size < total_size)); then
-				echo "   Less than the automatically calculated size, please choose other options."
+				echo "   Less than auto calculated size, please choose another option."
 				continue
 			fi
 			break
@@ -59,7 +62,7 @@ function create_super_img {
 		2)
 			device_size=$total_size
 			if ((device_size < total_size)); then
-				echo "   Less than the automatically calculated size, please choose other options."
+				echo "   Less than auto calculated size, please choose another option."
 				continue
 			fi
 			break
@@ -68,7 +71,7 @@ function create_super_img {
 			if [ -n "$original_super_size" ]; then
 				device_size=$original_super_size
 				if ((device_size < total_size)); then
-					echo "   Less than the automatically calculated size, please choose other options."
+					echo "   Less than auto calculated size, please choose another option."
 					continue
 				fi
 				break
@@ -80,34 +83,34 @@ function create_super_img {
 		C | c)
 			clear
 			while true; do
-				echo -e "\n   Hint: Automatically calculated size is $total_size\n"
-				echo -e "   [Q] Return to Workspace Menu\n"
-				echo -n "   Please enter a custom size: "
+				echo -e "\n   Note: Auto calculated size is $total_size\n"
+				echo -e "   [Q] Return to Previous Menu\n"
+				echo -n "   Please enter custom size: "
 				read device_size
 				if [[ "$device_size" =~ ^[0-9]+$ ]]; then
-					# If input value is less than total_size, prompt to re-enter
+					# If the input value is less than total_size, ask to re-enter
 					if ((device_size < total_size)); then
 						clear
-						echo -e "\n   The entered value is less than the automatically calculated size, please re-enter"
+						echo -e "\n   The entered value is less than the auto calculated size, please re-enter."
 					else
 						if ((device_size % 4096 == 0)); then
 							break
 						else
 							clear
-							echo -e "\n   The entered value is not a multiple of 4096 bytes, please re-enter"
+							echo -e "\n   The entered value is not a multiple of 4096 bytes, please re-enter."
 						fi
 					fi
 				elif [ "${device_size,,}" = "q" ]; then
 					return
 				else
 					clear
-					echo -e "\n   Invalid input, please re-enter"
+					echo -e "\n   Invalid input, please re-enter."
 				fi
 			done
 			break
 			;;
 		Q | q)
-			echo "   Packaging operation canceled, returning to workspace menu."
+			echo "   Task canceled, returning to previous menu."
 			return
 			;;
 		*)
@@ -160,10 +163,10 @@ function create_super_img {
 	esac
 	# Calculate the size each partition has
 	for img_file in "${img_files[@]}"; do
-		# Extract file name from file path
+		# Extract the filename from the file path
 		local base_name=$(basename "$img_file")
 		local partition_name=${base_name%.*}
-		# Calculate file size
+		# Calculate the size of the file
 		local partition_size=$(stat -c%s "$img_file")
 		# Set read-write attribute based on file system type
 		local file_type=$(recognize_file_type "$img_file")
@@ -191,23 +194,35 @@ function create_super_img {
 			;;
 		esac
 	done
-	echo -e "Packaging SUPER partition, please wait...\n..................\n..................\n.................."
+	echo -e "Packaging SUPER partition, please wait..."
 	mkdir -p "$WORK_DIR/$current_workspace/Repacked"
 	local start=$(python3 "$TOOL_DIR/get_right_time.py")
+	(
+		while true; do
+			for s in ◢ ◣ ◤ ◥; do
+				printf "\rTask in progress -> %s" "$s"
+				sleep 0.15
+			done
+		done
+	) &
+	SPIN_PID=$!
 	eval "$TOOL_DIR/lpmake  \
-    --device-size \"$device_size\" \
-    --metadata-size \"$metadata_size\" \
-    --metadata-slots \"$metadata_slots\" \
-    --block-size \"$block_size\" \
-    --super-name \"$super_name\" \
-    --force-full-image \
-    $params \
-    --output \"$WORK_DIR/$current_workspace/Repacked/super.img\"" >/dev/null 2>&1
-	echo "SUPER partition has been packaged"
+		--device-size \"$device_size\" \
+		--metadata-size \"$metadata_size\" \
+		--metadata-slots \"$metadata_slots\" \
+		--block-size \"$block_size\" \
+		--super-name \"$super_name\" \
+		--force-full-image \
+		$params \
+		--output \"$WORK_DIR/$current_workspace/Repacked/super.img\"" >/dev/null 2>&1
+	kill $SPIN_PID
+	wait $SPIN_PID 2>/dev/null
+	printf "\r%40s\r"
 	local end=$(python3 "$TOOL_DIR/get_right_time.py")
 	local runtime=$(echo "scale=3; if ($end - $start < 1) print 0; $end - $start" | bc)
+	echo "Task completed"
 	echo "Time taken: $runtime seconds"
-	echo -n "Press any key to return to the workspace menu..."
+	echo -n "Press any key to return to the previous menu..."
 	read -n 1
 }
 function package_super_image {
@@ -221,15 +236,15 @@ function package_super_image {
 			detected_files+=("$WORK_DIR/$current_workspace/Repacked/$line")
 		fi
 	done < <(grep -oP '^[^#]+' "$TOOL_DIR/super_search")
-	# Ask whether to move to the super folder
+	# Ask whether to move to super folder
 	if [ ${#detected_files[@]} -gt 0 ]; then
 		while true; do
-			echo -e "\n   Detected packaged subpartitions:\n"
+			echo -e "\n   Detected packed subpartitions:\n"
 			for file in "${detected_files[@]}"; do
 				echo -e "   \e[95m☑   $(basename "$file")\e[0m\n"
 			done
-			echo -e "\n   Do you want to move these files to the directory to be packaged?"
-			echo -e "\n   [1] Move   [2] Do not move\n"
+			echo -e "\n   Do you want to move these files to the packaging directory?"
+			echo -e "\n   [1] Move   [2] Don't Move\n"
 			echo -n "   Choose your operation: "
 			read move_files
 			clear
@@ -241,7 +256,7 @@ function package_super_image {
 			elif [[ "$move_files" = "2" ]]; then
 				break
 			else
-				echo -e "\n   Invalid selection, please re-enter.\n"
+				echo -e "\n   Invalid selection, please re-enter."
 			fi
 		done
 	fi
@@ -257,8 +272,8 @@ function package_super_image {
 	done
 	# Check if there are enough image files
 	if [ ${#real_img_files[@]} -lt 2 ]; then
-		echo -e "\n   The SUPER directory must contain at least two image files."
-		read -n 1 -s -r -p "   Press any key to return to the workspace menu..."
+		echo -e "\n   SUPER directory must contain at least two image files."
+		read -n 1 -s -r -p "   Press any key to return to the previous menu..."
 		return
 	fi
 	# Check for forbidden files
@@ -269,35 +284,35 @@ function package_super_image {
 			forbidden_files+=("$file")
 		fi
 	done
-	# If there are forbidden files, display error message and return
+	# If there are forbidden files, display error and return
 	if [ ${#forbidden_files[@]} -gt 0 ]; then
 		echo -e "\n   Execution denied, the following files are forbidden to merge\n"
 		for file in "${forbidden_files[@]}"; do
 			echo -e "   \e[33m☒   $(basename "$file")\e[0m\n"
 		done
-		read -n 1 -s -r -p "   Press any key to return to the workspace menu..."
+		read -n 1 -s -r -p "   Press any key to return to the previous menu..."
 		return
 	fi
-	# Ask the user if they want to package
+	# Ask user whether to package
 	while true; do
-		# List all subfiles in the target directory, each file is prefixed with a number
-		echo -e "\n   Subpartitions in the directory to be packaged:\n"
+		# List all subfiles in the target directory, each preceded by a number
+		echo -e "\n   Subpartitions in the packaging directory:\n"
 		for i in "${!img_files[@]}"; do
 			file_name=$(basename "${img_files[$i]}")
 			printf "   \e[96m[%02d] %s\e[0m\n\n" $((i + 1)) "$file_name"
 		done
-		echo -e "\n   [1] Start Packaging   [Q] Return to Workspace Menu\n"
+		echo -e "\n   [Y] Start Packaging   [Q] Return to Previous Menu\n"
 		echo -n "   Choose the function you want to execute: "
 		read is_pack
 		is_pack=$(echo "$is_pack" | tr '[:upper:]' '[:lower:]')
 		clear
 		# Handle user selection
 		case "$is_pack" in
-		1)
-			# User chose to package, ask for partition type and packaging method
+		y)
+			# User chose to package, ask partition type and packaging method
 			while true; do
 				echo -e "\n   [1] OnlyA Dynamic Partition   [2] AB Dynamic Partition   [3] VAB Dynamic Partition\n"
-				echo -e "   [Q] Return to Workspace Menu\n"
+				echo -e "   [Q] Return to Previous Menu\n"
 				echo -n "   Please select your partition type: "
 				read partition_type
 				partition_type=$(echo "$partition_type" | tr '[:upper:]' '[:lower:]')
@@ -306,13 +321,13 @@ function package_super_image {
 					return
 				fi
 				clear
-				# Handle user-selected partition type
+				# Handle user selected partition type
 				case "$partition_type" in
 				1 | 2 | 3)
-					# User selected a valid partition type, ask for packaging method
+					# User selected a valid partition type, ask packaging method
 					while true; do
-						echo -e "\n   [1] Sparse   [2] Non-sparse\n"
-						echo -e "   [Q] Return to Workspace Menu\n"
+						echo -e "\n   [1] Sparse   [2] Non-Sparse\n"
+						echo -e "   [Q] Return to Previous Menu\n"
 						echo -n "   Please select packaging method: "
 						read is_sparse
 						is_sparse=$(echo "$is_sparse" | tr '[:upper:]' '[:lower:]')
@@ -320,7 +335,7 @@ function package_super_image {
 							echo "   Selection canceled, returning to workspace menu."
 							return
 						fi
-						# Handle user-selected packaging method
+						# Handle user selected packaging method
 						case "$is_sparse" in
 						1 | 2)
 							break
@@ -342,7 +357,7 @@ function package_super_image {
 			break
 			;;
 		q)
-			echo "Packaging operation canceled, returning to the previous menu."
+			echo "Packaging operation canceled, returning to previous menu."
 			return
 			;;
 		*)
@@ -351,7 +366,7 @@ function package_super_image {
 			;;
 		esac
 	done
-	# Add your code here to handle the part after user input
+	# Add your code here to handle the parts after user input
 	case "$partition_type-$is_sparse" in
 	1-1)
 		create_super_img "OnlyA" "yes"
