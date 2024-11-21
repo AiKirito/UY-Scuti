@@ -1,92 +1,139 @@
-# UY Sct
-**| English | [Simplified Chinese](README.md) |**
+---
 
-This tool is designed to solve the problems of unpacking, packing, and modifying img files.\
-This tool can be used for testing on both WSL2 and Ubuntu. Install the necessary packages with the following commands:
+# UY Scuti
+**| [English](README_EN.md) | Simplified Chinese |**
 
-**sudo apt update** \
+The purpose of this tool is to solve the issues with unpacking, repacking, and modifying IMG files.  
+This tool has been tested on WSL2 and Ubuntu, and it works fine. The required packages for installation are:
+
+**sudo apt update**  
 **sudo apt install lz4 python3 openjdk-21-jdk device-tree-compiler**
 
-To give the tool permissions, use:
+Other Linux-based systems are yet to be tested, but they should work fine. To grant permissions for the tool, run:
 
-**chmod 777 -R ./*** 
+**chmod 777 -R ./**
 
-Then you can start the tool by simply entering:
+Then, to start the tool, simply enter:
 
 **./start.sh**
 
-**This tool only supports partition files in img format, regular ZIP ROM, Samsung TAR ROM, lz4 file extraction and payload.bin extraction.\
-It does not support old version partition files in other formats.\
-The first time you use this tool, you must read the following instructions carefully.\
-If you ask questions that are stated in the instructions without careful reading, I will ignore them.**
+**This tool only supports IMG partition files, standard ZIP flashable packages, Samsung TAR flashable packages, LZ4 file extraction, and payload.bin extraction. Older versions and other partition formats are not supported and will not be supported.**
 
-----
+If you are using this tool for the first time, please make sure to read the instructions below carefully. Any issues already addressed in the documentation will be ignored.
 
-Main Menu
+---
 
-> Select Workspace: Select a workspace. After selection, subsequent operations will be based on the path of this workspace.
+## Main Menu
 
-> Create Workspace: Create a workspace. You can name it anything, allowing spaces and Chinese characters. The purpose of the workspace is to limit the scope of use.
+- **Choose Work Domain**: Select a work domain. After selection, all subsequent operations will be based on this directory.
+  
+- **Create Work Domain**: Create a new work domain with any name (spaces and Chinese characters are allowed). The work domain limits the scope of your operations.
+  
+- **Delete Work Domain**: Delete an existing work domain.
+  
+- **Change Language Setting**: Toggle between Simplified Chinese and English.
+  
+- **Exit Program**: Exit the tool.
 
-> Delete Workspace: Delete a workspace.
+---
 
-> Change Language Settings: Supports switching between Simplified Chinese and English.
+## Work Domain Menu
 
-> Exit Program
+- **Extract Partition Files**: Supports extraction of EROFS, EXT, F2FS, VBMETA, DTBO, BOOT, PAYLOAD, SUPER, SPARSE, TAR, ZIP, and LZ4 files. Select `ALL` to extract all partitions, or `S` for simple recognition mode. The simple mode automatically recognizes SUPER and its sub-partitions. For Samsung ROMs, it also recognizes optics.img and vbmeta files, depending on the presence of optics.img in the work domain directory. Only supported partitions will be displayed in the extraction list. If a partition file is not shown, the tool does not support it. The tool supports SUPER partition recognition for Xiaomi and OnePlus ROMs.
+  
+- **Repack Partition Files**: Repack the extracted partition files. If the original partition was EROFS, EXT, or F2FS, you will need to select the target file format (EROFS, EXT, or F2FS). For other formats, the tool automatically detects the appropriate format.
 
-----
+- **Repack SUPER Partition**: If you have extracted sub-partitions and placed them into the `Extracted-files/super` folder in the work domain directory (note: this happens automatically if you repack SUPER partitions), use this function to repack them. Ensure that the dynamic partition type matches your device's partition scheme. Whether to use sparse format depends on the ROM’s support.
 
-Workspace Menu
+- **One-Click Modification**: Built-in quick modification solutions for HyperOS and OneUI.
 
-> Partition File Extraction: Supports the extraction of files identified by EROFS, EXT, F2FS, VBMETA, DTBO, BOOT, PAYLOAD, SUPER, SPARSE, TAR, ZIP, and LZ4. Press ALL to extract all files, or press S to start simplified recognition. The purpose of simplified recognition is to automatically identify super and its sub-partitions under normal circumstances. For Samsung ROMs, it will also recognize optics.img and vbmeta files, depending on whether optics.img exists in the working directory. The extracted partition file list will only display recognizable partitions. If you find that the partition file you placed is not displayed, it means the tool does not support the recognition of that partition file. This implementation is because displaying unsupported files in the list is meaningless. It supports the recognition of super partitions for Xiaomi and OnePlus devices.
+- **Build Flashable Package**: Quickly move repacked partitions to the `Ready-to-flash/images` directory using the new "Easy Move" feature. Supports both multi-part and full package compression, with custom size. The device code must match your device to avoid conflicts. The default package name will match the work domain name. The flash package is designed for line flashing and the script disables AVB2.0 verification by default, so no additional modifications are needed.
 
-> Partition File Packaging: Package the extracted partition files. If the original identifier is EROFS, EXT, F2FS, then you need to choose the packaging format after packaging, you can choose EROFS, EXT, F2FS packaging format, the original identifier is other supported formats, no need to choose, automatic recognition.
+- **Return to Main Menu**: Return to the main menu.
 
-> SUPER Partition Packaging: Put the packaged sub-partition files in the Extracted-files/super folder of the working domain directory (if you package the super sub-partition, the automatic move feature will be displayed before packaging), and then you can use this function. The dynamic partition type should be consistent with the original one. You need to understand the dynamic partition type of your device. Whether to choose the sparse format depends on whether the ROM supports it.
+- **Exit Program**: Exit the tool.
 
-> One-click Modification: Built-in quick modification solutions for HyperOS and OneUI.
+---
 
-> Build Flash Package: Use the newly added "Easy Move" feature to quickly move the packaged partition to the Ready-to-flash/images directory. Supports full-volume compression, and the size can be customized. The model code needs to be strictly in accordance with the model you use to avoid conflicts. The default package name is consistent with the working domain name. This flash package is an online flash package. The script turns off AVB2.0 verification by default, so no additional modification is required.
+---
 
-> Return to Main Menu
+## One-Click Modification Overview (Key Features)
 
-> Exit Program
+1. **HyperOS / ONEUI Replacement**  
+   - Description: This feature allows you to replace any file or folder in the system partition. To use it, locate the `resources/my_tools/nice_rom/bin/samsun(xiaomi)/replace` directory and follow these steps:
+     - Suppose you have extracted a file from the system partition (for example, named `1`).
+     - Place this file (or folder) in the `replace` directory.
+     - After using this feature, the file (or folder) named `1` in the `replace` directory will replace the corresponding file (or folder) in the system partition.
+     - **Note**: The `1` file is just an example—you can replace any file or folder, not just the one in the example.
 
-----
+2. **HyperOS / ONEUI Additions**  
+   - Description: This feature allows you to add APK files to a specified directory in the partition. Depending on the system you are using, the operation is as follows:
+   
+   **HyperOS Add to Product Partition**  
+   - Path: `resources/my_tools/nice_rom/bin/xiaomi/add_for_product`
+   - Inside this directory, there are subdirectories such as `app`, `data-app`, and `priv-app`.
+   - You can place your APK files into any of these subdirectories by following the naming rules:
+     - For example, if you want to add `1.apk` to the `product/app` directory:
+       - Create a directory at `resources/my_tools/nice_rom/bin/xiaomi/add_for_product/app/file_locked_1`.
+       - Place `Only_1.apk` in the `file_locked_1` directory.
+     - This will add the APK to the target directory.
+     - **Note**: This feature only works for the Product partition, and APKs placed in the `data-app` directory are uninstallable.
 
-## HyperOS Modification Tutorial (Tested)
-1. **Create and select a workspace**: Create a new workspace and immediately select it.
-2. Move the ROM package or partition files into the workspace directory. If it's a ROM package, it will eventually be extracted into partition files.
-3. Use the simple recognition feature to automatically filter out the `SUPER` sub-partition, then use the extract all feature.
-4. Use the one-click modification feature. Follow the prompts to make the necessary modifications.
-5. Pack all the extracted partition files. The file system used for packing depends on your kernel.
-6. Move the packed sub-partitions into the `Extracted-files/super` directory within the selected workspace.
-7. Use the `SUPER` packing feature. Ensure the packed dynamic partition matches your device. The size will be automatically calculated. Follow the prompts to choose the appropriate options.
-8. Move the packed `SUPER` partition into the `Ready-to-flash/images` directory within the selected workspace. Note that the simple recognition feature has already moved the other partitions here!
-9. Use the `Fastboot(d)` packing feature. This completes the creation of a modified ROM.
+   **ONEUI Add to System Partition**  
+   - The process is the same as for HyperOS, but this feature applies to the System partition for Samsung devices.
+   - For Samsung devices, uninstallable APKs will be placed in the `preload` directory.
 
-## OneUI Modification Tutorial (Untested)
-1. **Create and select a workspace**: Create a new workspace and immediately select it.
-2. Move the ROM package or partition files into the workspace directory. If it's a ROM package, it will eventually be extracted into partition files.
-3. Use the simple recognition feature to automatically filter out the `SUPER` sub-partition, then use the extract all feature.
-4. Use the one-click modification feature. Follow the prompts to make the necessary modifications. For Samsung devices, removing vbmeta verification is necessary.
-5. Pack all the extracted partition files. The file system used for packing depends on your kernel.
-6. Move the packed sub-partitions into the `Extracted-files/super` directory within the selected workspace.
-7. Use the `SUPER` packing feature. For Samsung devices, the packed `SUPER` partition file must match the official size.
-8. Move the packed `SUPER` partition into the `Ready-to-flash/images` directory within the selected workspace. Note that the simple recognition feature has already moved the other partitions here!
-9. Use the `Odin Rom` packing feature. This completes the creation of a modified Samsung ROM, but whether it can boot needs to be tested.
+3. **ONEUI Feature Addition**  
+   - Description: This feature requires extracting the `optics.img` partition content first.
+   - Operation: It automatically decodes the CSC (Customer Service Code) file to add various features specific to Samsung's ONEUI.
+   - Path: `resources/my_tools/nice_rom/bin/samsung/csc_add/csc_features_need`
+   - Place the features you want to add into this directory.
 
-----
+---
 
-# Acknowledgements 🙏
+---
+
+## HyperOS Modification Guide (Tested)
+
+1. Create a new work domain and select it immediately.
+2. Move the ROM or partition files into the work domain directory and extract them once.
+3. Use "Simple Recognition" to automatically filter the SUPER sub-partition. Before using this feature, ensure that all IMG files are extracted. Then, use the "Extract All" function to extract partition contents.
+4. Use "One-Click Modification" and follow the prompts to modify the files as needed.
+5. Repack all extracted partition files. The file system type for repacking depends on your kernel.
+6. Move the repacked sub-partitions to the `Extracted-files/super` folder in the selected work domain.
+7. Use the "SUPER Repack" function. Ensure that the dynamic partition type matches your device, and the size will be calculated automatically.
+8. Move the repacked SUPER partition to the `Ready-to-flash/images` directory. "Simple Recognition" will automatically move other partitions there.
+9. Use the Fastboot(d) repack function to complete the ROM modification.
+
+## OneUI Modification Guide (Untested)
+
+1. Create a new work domain and select it immediately.
+2. Move the ROM or partition files into the work domain directory and extract them once.
+3. Use "Simple Recognition" to automatically filter the SUPER sub-partition. Before using this feature, ensure all IMG files are extracted, then use "Extract All" to extract partition contents.
+4. Use "One-Click Modification": Follow the prompts for modifications. For Samsung, removing the vbmeta verification is necessary.
+5. Repack all extracted partition files. The file system type for repacking depends on your kernel.
+6. Move the repacked sub-partitions to the `Extracted-files/super` folder in the selected work domain.
+7. Use the "SUPER Repack" function. For Samsung devices, the SUPER partition must match the official size.
+8. Move the repacked SUPER partition to the `Ready-to-flash/images` directory. "Simple Recognition" will automatically move other partitions there.
+9. Use the Odin ROM repack function to complete the Samsung ROM modification. Whether the device boots up needs testing.
+
+---
+
+Certainly! Here’s the updated translation for the acknowledgements section with the new changes:
+
+---
+
+## Acknowledgements
 
 1. [**TIK**](https://github.com/ColdWindScholar/TIK) - Magic number reference.
-2. [**ext4**](https://github.com/cubinator/ext4) and [**extfstools**](https://github.com/nlitsme/extfstools) - Extracting ext image configuration files and files.
-3. [**android-tools**](https://github.com/nmeum/android-tools) - Providing a rich set of Android tools.
-4. [**Android_boot_image_editor**](https://github.com/cfig/Android_boot_image_editor) - Extracting and repacking vbmeta, boot, and vendor_boot.
-5. [**f2fsUnpack**](https://github.com/thka2016/f2fsUnpack) - Extracting f2fs files.
-6. [**payload-dumper-go**](https://github.com/ssut/payload-dumper-go) - Extracting payload.bin files.
-7. [**erofs-extract**](https://github.com/sekaiacg/erofs-extract) - Extracting erofs files.
-8. [**7zip**](https://github.com/ip7z/7zip/releases) - Extracting super partitions and repacking ROM packages.
-9. [**Apktool**](https://github.com/iBotPeaches/Apktool) - Decompiling.
+2. [**ext4**](https://github.com/cubinator/ext4) - EXT file system handling.
+3. [**android-tools**](https://github.com/nmeum/android-tools) - A rich set of Android tools.
+4. [**Android_boot_image_editor**](https://github.com/cfig/Android_boot_image_editor) - Extraction and repacking of `vbmeta`, `boot`, and `vendor_boot` images.
+5. [**f2fsUnpack**](https://github.com/thka2016/f2fsUnpack) - F2FS file extraction.
+6. [**payload-dumper-go**](https://github.com/ssut/payload-dumper-go) - Extraction of `payload.bin` files.
+7. [**erofs-extract**](https://github.com/sekaiacg/erofs-utils) - EROFS file extraction.
+8. [**7zip**](https://github.com/ip7z/7zip/releases) - SUPER partition extraction and ROM package repacking.
+9. [**Apktool**](https://github.com/iBotPeaches/Apktool) - APK decompiling.
 10. [**OmcTextDecoder**](https://github.com/fei-ke/OmcTextDecoder) - Samsung CSC encoding and decoding.
+
+---

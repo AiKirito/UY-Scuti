@@ -58,10 +58,53 @@
 <br>
 <br>
 
+---
+
+## 一键修改介绍（仅关键功能）
+
+1. **HyperOS / ONEUI 替换**  
+   - 功能说明：该功能允许你替换系统分区中的任意文件或文件夹。你需要找到 `resources/my_tools/nice_rom/bin/samsun(xiaomi)/replace` 目录，并按以下步骤操作：
+     - 假设你提取了系统分区中的某个文件（例如命名为 `1` 文件）。
+     - 将这个文件（或文件夹）放入 `replace` 目录。
+     - 使用该功能后，`replace` 目录中的 `1` 文件（或文件夹）将替换系统分区中同名的文件（或文件夹）。
+     - **注意**：这里的 `1` 文件只是一个示例，你可以替换任意文件或文件夹。
+
+2. **HyperOS / ONEUI 添加**  
+   - 功能说明：该功能允许你将 APK 文件添加到指定的分区目录。根据所用的系统不同，操作方式如下：
+   
+   **HyperOS 添加到 Product 分区**  
+   - 路径：`resources/my_tools/nice_rom/bin/xiaomi/add_for_product`
+   - 该目录下有 `app`、`data-app` 和 `priv-app` 等子目录。
+   - 你可以将 APK 文件添加到这些目录中的任意位置，只需按照命名规则操作：
+     - 例如：如果你想将 `1.apk` 添加到 `product/app` 目录：
+       - 创建 `resources/my_tools/nice_rom/bin/xiaomi/add_for_product/app/file_locked_1` 目录。
+       - 将 `Only_1.apk` 放入 `file_locked_1` 目录中。
+     - 该功能会将 APK 文件添加到目标目录。
+     - **注意**：该功能仅适用于 Product 分区，且 `data-app` 目录中的 APK 文件是可卸载的。
+
+   **ONEUI 添加到 System 分区**  
+   - 操作与 HyperOS 类似，但该功能适用于三星设备的 System 分区。
+   - 对于三星设备，卸载的 APK 文件会被放置到 `preload` 目录中。
+
+3. **ONEUI 特性添加**  
+   - 功能说明：此功能需要在提取 `optics.img` 分区内容后使用。
+   - 操作方式：通过自动解码 CSC 文件来添加三星 ONEUI 特性。
+   - 操作路径：`resources/my_tools/nice_rom/bin/samsung/csc_add/csc_features_need`
+   - 将你希望添加的功能放入该目录即可。
+
+---
+
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+
 ## HyperOS 修改教程（测试通过）
-1. 创建并选中一个工作域：创建一个新的工作域并立即选中它。
-2. 将 Rom 包或者分区文件移动到工作域目录当中，这里如果是 Rom 包最终会提取到分区文件。
-3. 使用简易识别自动筛选出 SUPER 子分区，然后再使用全部提取。
+1. 创建一个新的工作域并立即选中它。
+2. 将 Rom 包或者分区文件移动到工作域目录当中，你需要提取一次。
+3. 使用简易识别自动筛选出 SUPER 子分区，但是使用该功能前，确保所有 IMG 格式的文件已被提取，然后再使用全部提取进一步提取分区文件的内容。
 4. 使用一键修改，需要修改什么，自己看提示使用。
 5. 打包所有提取的分区文件，打包的文件系统取决于你的内核。
 6. 将打包的子分区移动到选中工作域 Extracted-files/super 里面。
@@ -70,9 +113,9 @@
 9. 使用 Fastboot(d) 打包功能，这样一个修改的 ROM 制作完成。
 
 ## OneUI 修改教程（未测试）
-1. 创建并选中一个工作域：创建一个新的工作域并立即选中它。
-2. 将 Rom 包或者分区文件移动到工作域目录当中，这里如果是 Rom 包最终会提取到分区文件。
-3. 使用简易识别：自动筛选出 `SUPER` 子分区，然后再使用全部提取。
+1. 创建一个新的工作域并立即选中它。
+2. 将 Rom 包或者分区文件移动到工作域目录当中，你需要提取一次。
+3. 使用简易识别自动筛选出 SUPER 子分区，但是使用该功能前，确保所有 IMG 格式的文件已被提取，然后再使用全部提取进一步提取分区文件的内容。
 4. 使用一键修改：需要修改什么，自己看提示使用，对于三星，移除 vbmeta 验证是必要的。
 5. 打包所有提取的分区文件：打包的文件系统取决于你的内核。
 6. 将打包的子分区移动到选中工作域 Extracted-files/super 里面。
@@ -87,12 +130,12 @@
 # 感谢 
 
 1. [**TIK**](https://github.com/ColdWindScholar/TIK) - 魔数参考。
-2. [**ext4**](https://github.com/cubinator/ext4) 和 [**extfstools**](https://github.com/nlitsme/extfstools) - ext 镜像配置文件和文件提取。
+2. [**ext4**](https://github.com/cubinator/ext4) ext 镜像配置文件和文件提取。
 3. [**android-tools**](https://github.com/nmeum/android-tools) - 提供了丰富的 Android 工具集。
 4. [**Android_boot_image_editor**](https://github.com/cfig/Android_boot_image_editor) - vbmeta、boot、vendor_boot 的提取与打包。
 5. [**f2fsUnpack**](https://github.com/thka2016/f2fsUnpack) - f2fs 文件提取。
 6. [**payload-dumper-go**](https://github.com/ssut/payload-dumper-go) - payload.bin 文件提取。
-7. [**erofs-extract**](https://github.com/sekaiacg/erofs-extract) - erofs 文件提取。
+7. [**erofs-extract**](https://github.com/sekaiacg/erofs-utils) - erofs 文件提取。
 8. [**7zip**](https://github.com/ip7z/7zip/releases) - super 分区提取及 Rom 包打包。
 9. [**Apktool**](https://github.com/iBotPeaches/Apktool) - 反编译。
 10. [**OmcTextDecoder**](https://github.com/fei-ke/OmcTextDecoder) - 三星 CSC 编码与解码。
