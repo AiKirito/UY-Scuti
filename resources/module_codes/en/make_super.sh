@@ -22,7 +22,7 @@ function create_super_img {
 		total_size=$((total_size + 4096 - remainder))
 	fi
 	# Define the size of the extra space
-	local extra_space=$((100 * 1024 * 1024 * 1024 / 100))
+	local extra_space=$((2 * 1024 * 1024 * 1024 / 10))
 	# Adjust the total_size based on the partition type
 	case "$partition_type" in
 	"VAB")

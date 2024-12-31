@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 :HOME
 
-REM ÉèÖÃ»úĞÍ
+REM è®¾ç½®æœºå‹
 set "right_device=Model_code"
 
 set "PATH=%PATH%;%cd%\bin\windows"
@@ -13,28 +13,28 @@ for /f "tokens=2 delims=:" %%a in ('chcp') do set "locale=%%a"
 cls
 
 if "!locale!"==" 936" (
-    set "confirm_switch={08}{\n}ÄãÈ·¶¨ÒªÖ´ĞĞÕâ¸ö²Ù×÷Âğ£¿{\n}{\n}Èç¹ûÈ·¶¨£¬ÇëÊäÈë 'sure'£¬·ñÔò£¬ÊäÈëÈÎÒâÒÔÍË³ö£º{\n}{\n}"
-    set "device_mismatch_msg=´Ë ROM ½öÊÊÅä !right_device! £¬µ«ÄãµÄÉè±¸ÊÇ !DeviceCode!"
-    set "disabled_avb_verification=ÒÑ½ûÓÃ Avb2.0 Ğ£Ñé"
-    set "exit_program={04}{\n}[4] {01}ÍË³ö³ÌĞò{#}{#}{\n}"
-    set "execution_completed=Ö´ĞĞÍê³É£¬µÈ´ı×Ô¶¯ÖØÆô"
-    set "failure_status=ÒòÎªÄ³Ğ©Ô­Òò£¬Î´ÄÜË¢Èë"
-    set "fastboot_mode={06}µ±Ç°Ëù´¦×´Ì¬£ºFastboot Ä£Ê½{\n}"
-    set "fastbootd_mode={06}µ±Ç°Ëù´¦×´Ì¬£ºFastbootd Ä£Ê½{\n}"
-    set "format_data_flash={04}{\n}[2] {01}¸ñÊ½»¯ÓÃ»§Êı¾İ²¢Ë¢Èë{#}{#}{\n}"
-    set "formatting_data=ÕıÔÚ¸ñÊ½»¯ DATA"
-    set "keep_data_flash={04}{\n}[1] {01}±£ÁôÈ«²¿Êı¾İ²¢Ë¢Èë{#}{#}{\n}"
-    set "kept_data_reboot=ÒÑ±£ÁôÈ«²¿Êı¾İ£¬×¼±¸ÖØÆô£¡"
+    set "confirm_switch={08}{\n}ä½ ç¡®å®šè¦æ‰§è¡Œè¿™ä¸ªæ“ä½œå—ï¼Ÿ{\n}{\n}å¦‚æœç¡®å®šï¼Œè¯·è¾“å…¥ 'sure'ï¼Œå¦åˆ™ï¼Œè¾“å…¥ä»»æ„ä»¥é€€å‡ºï¼š{\n}{\n}"
+    set "device_mismatch_msg=æ­¤ ROM ä»…é€‚é… !right_device! ï¼Œä½†ä½ çš„è®¾å¤‡æ˜¯ !DeviceCode!"
+    set "disabled_avb_verification=å·²ç¦ç”¨ Avb2.0 æ ¡éªŒ"
+    set "exit_program={04}{\n}[4] {01}é€€å‡ºç¨‹åº{#}{#}{\n}"
+    set "execution_completed=æ‰§è¡Œå®Œæˆï¼Œç­‰å¾…è‡ªåŠ¨é‡å¯"
+    set "failure_status=å› ä¸ºæŸäº›åŸå› ï¼Œæœªèƒ½åˆ·å…¥"
+    set "fastboot_mode={06}å½“å‰æ‰€å¤„çŠ¶æ€ï¼šFastboot æ¨¡å¼{\n}"
+    set "fastbootd_mode={06}å½“å‰æ‰€å¤„çŠ¶æ€ï¼šFastbootd æ¨¡å¼{\n}"
+    set "format_data_flash={04}{\n}[2] {01}æ ¼å¼åŒ–ç”¨æˆ·æ•°æ®å¹¶åˆ·å…¥{#}{#}{\n}"
+    set "formatting_data=æ­£åœ¨æ ¼å¼åŒ– DATA"
+    set "keep_data_flash={04}{\n}[1] {01}ä¿ç•™å…¨éƒ¨æ•°æ®å¹¶åˆ·å…¥{#}{#}{\n}"
+    set "kept_data_reboot=å·²ä¿ç•™å…¨éƒ¨æ•°æ®ï¼Œå‡†å¤‡é‡å¯ï¼"
     set "one_title={F9}            Powered By {F0}Garden Of Joy            {#}{#}{\n}"
-    set "retry_message=ÖØÊÔ..."
-    set "select_project={02}ÇëÑ¡ÔñÄãÒª²Ù×÷µÄÏîÄ¿£º{\n}{\n}"
-    set "success_status=Ë¢Èë³É¹¦"
-    set "switch_to_fastboot={04}{\n}[3] {01}ÇĞ»»µ½ Fastboot Ä£Ê½{#}{#}{\n}"
-    set "switch_to_fastbootd={04}{\n}[3] {01}ÇĞ»»µ½ Fastbootd Ä£Ê½{#}{#}{\n}"
-    set "title=¶ÜÅÆ×ù UY ÏßË¢¹¤¾ß"
-    set "waiting_device={0D}¡ª¡ª¡ª¡ª  ÕıÔÚµÈ´ıÉè±¸  ¡ª¡ª¡ª¡ª{#}{\n}{\n}"
+    set "retry_message=é‡è¯•..."
+    set "select_project={02}è¯·é€‰æ‹©ä½ è¦æ“ä½œçš„é¡¹ç›®ï¼š{\n}{\n}"
+    set "success_status=åˆ·å…¥æˆåŠŸ"
+    set "switch_to_fastboot={04}{\n}[3] {01}åˆ‡æ¢åˆ° Fastboot æ¨¡å¼{#}{#}{\n}"
+    set "switch_to_fastbootd={04}{\n}[3] {01}åˆ‡æ¢åˆ° Fastbootd æ¨¡å¼{#}{#}{\n}"
+    set "title=ç›¾ç‰Œåº§ UY çº¿åˆ·å·¥å…·"
+    set "waiting_device={0D}â€”â€”â€”â€”  æ­£åœ¨ç­‰å¾…è®¾å¤‡  â€”â€”â€”â€”{#}{\n}{\n}"
 ) else (
-    set "confirm_switch={08}{\n}Are you sure you want to perform this operation?{\n}{\n}If sure, please enter 'sure', otherwise, enter anything to exit£º{\n}{\n}"
+    set "confirm_switch={08}{\n}Are you sure you want to perform this operation?{\n}{\n}If sure, please enter 'sure', otherwise, enter anything to exitï¼š{\n}{\n}"
     set "device_mismatch_msg=This ROM is only compatible with !right_device! , but your device is !DeviceCode!"
     set "disabled_avb_verification=Avb2.0 verification has been disabled"
     set "exit_program={04}{\n}[4] {01}Exit program{#}{#}{\n}"
@@ -48,39 +48,39 @@ if "!locale!"==" 936" (
     set "kept_data_reboot=All data has been kept, ready to reboot!"
     set "one_title={F9}            Powered By {F0}Garden Of Joy            {#}{#}{\n}"
     set "retry_message=Retry..."
-    set "select_project={02}Please select the project you want to operate£º{\n}{\n}"
+    set "select_project={02}Please select the project you want to operateï¼š{\n}{\n}"
     set "success_status=Flash successful"
     set "switch_to_fastboot={04}{\n}[3] {01}Switch to Fastboot mode{#}{#}{\n}"
     set "switch_to_fastbootd={04}{\n}[3] {01}Switch to Fastbootd mode{#}{#}{\n}"
     set "title=UY Scuti Flash Tool"
-    set "waiting_device={0D}¡ª¡ª¡ª¡ª  Waiting for device  ¡ª¡ª¡ª¡ª{#}{\n}{\n}"
+    set "waiting_device={0D}â€”â€”â€”â€”  Waiting for device  â€”â€”â€”â€”{#}{\n}{\n}"
 )
 
 title !title!
 
-REM ÏÔÊ¾µÈ´ıÉè±¸µÄÏûÏ¢
+REM æ˜¾ç¤ºç­‰å¾…è®¾å¤‡çš„æ¶ˆæ¯
 echo.
 cho !waiting_device!
 
-REM »ñÈ¡Éè±¸ĞÍºÅ
+REM è·å–è®¾å¤‡å‹å·
 for /f "tokens=2" %%a in ('fastboot getvar product 2^>^&1^|find "product"') do (
     set DeviceCode=%%a
 )
-REM »ñÈ¡Éè±¸µÄ·ÖÇøÀàĞÍ
+REM è·å–è®¾å¤‡çš„åˆ†åŒºç±»å‹
 for /f "tokens=2" %%a in ('fastboot getvar slot-count 2^>^&1^|find "slot-count" ') do (
     set DynamicPartitionType=%%a
 )
-REM ¸ù¾İÉè±¸µÄ·ÖÇøÀàĞÍÉèÖÃ±äÁ¿ DynamicPartitionType µÄÖµ
+REM æ ¹æ®è®¾å¤‡çš„åˆ†åŒºç±»å‹è®¾ç½®å˜é‡ DynamicPartitionType çš„å€¼
 if "!DynamicPartitionType!" == "2" (
     set DynamicPartitionType=NonOnlyA
 ) else (
     set DynamicPartitionType=OnlyA
 )
-REM »ñÈ¡Éè±¸µÄ Fastboot ×´Ì¬
+REM è·å–è®¾å¤‡çš„ Fastboot çŠ¶æ€
 for /f "tokens=2" %%a in ('fastboot getvar is-userspace 2^>^&1^|find "is-userspace"') do (
     set FastbootState=%%a
 )
-REM ¸ù¾İÉè±¸µÄ Fastboot ×´Ì¬ÉèÖÃ±äÁ¿ FastbootState µÄÖµ
+REM æ ¹æ®è®¾å¤‡çš„ Fastboot çŠ¶æ€è®¾ç½®å˜é‡ FastbootState çš„å€¼
 if "!FastbootState!" == "yes" (
     set FastbootState=!fastbootd_mode!
 ) else (
@@ -144,7 +144,7 @@ goto HOME&pause
 cls 
 echo.
 
-REM ¶Ô vbmeta ·ÖÇøÎÄ¼ş×¨ÃÅË¢Èë
+REM å¯¹ vbmeta åˆ†åŒºæ–‡ä»¶ä¸“é—¨åˆ·å…¥
 set "count=0"
 for /R "images\" %%i in (*.img) do (
 	echo %%~ni | findstr /B "vbmeta" >nul && (
@@ -162,7 +162,7 @@ if !count! gtr 0 (
 	echo.
 )
 
-REM ±éÀú·ÖÇøÎÄ¼ş²¢Ë¢Èë
+REM éå†åˆ†åŒºæ–‡ä»¶å¹¶åˆ·å…¥
 for /f "delims=" %%b in ('dir /b images\*.img ^| findstr /v /i "super.img" ^| findstr /v /i "preloader_raw.img" ^| findstr /v /i "cust.img" ^| findstr /v /i "recovery.img" ^| findstr /v /i /b "vbmeta"') do (
     set "filename=%%~nb"
     if "!DynamicPartitionType!"=="OnlyA" (
@@ -192,7 +192,7 @@ for /f "delims=" %%b in ('dir /b images\*.img ^| findstr /v /i "super.img" ^| fi
     )
 )
 
-REM MTK »úĞÍ×¨Êô
+REM MTK æœºå‹ä¸“å±
 if exist "images\preloader_raw.img" (
     fastboot flash preloader_a "images\preloader_raw.img"
     fastboot flash preloader_b "images\preloader_raw.img"
@@ -207,6 +207,7 @@ if exist images\cust.img (
 )
 
 if exist images\super.img (
+    fastboot erase super
     fastboot flash super "images\super.img"
     echo.
 )

@@ -25,7 +25,7 @@ function create_super_img {
 	fi
 
 	# 定义额外的空间大小
-	local extra_space=$((100 * 1024 * 1024 * 1024 / 100))
+	local extra_space=$((2 * 1024 * 1024 * 1024 / 10))
 
 	# 根据分区类型调整 total_size 的值
 	case "$partition_type" in
