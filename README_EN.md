@@ -1,4 +1,3 @@
----
 
 # UY Scuti
 **| [English](README_EN.md) | Simplified Chinese |**

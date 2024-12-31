@@ -5,7 +5,7 @@ on:
       - main
   workflow_dispatch:
 env: 
-  VERSION: '9.0.0'
+  VERSION: '10.0.0'
 jobs: 
   build: 
     runs-on: ubuntu-latest
@@ -35,22 +35,16 @@ jobs:
             ## 更新内容
 
             ### 新的功能
-            1. **ext 分区文件的提取更换**：现在提取 ext 分区文件时需要 ROOT 权限。
-            2. **ext4 打包方式更新**：ext4 文件的打包方式已更改为使用 `mke2fs` 和 `e2fsdroid`，仅支持 Android 10 及更高版本。
-            3. **super.img 打包添加加载动画**：在打包 `super.img` 时新增了加载动画。
-            4. **不再支持 ext 和 f2fs 稀疏格式打包**：已移除对 ext 和 f2fs 稀疏格式的打包支持。
-            5. **更新逻辑分离**：将 SELinux 配置与上下文内容的更新逻辑从打包逻辑中分离，便于代码阅读和维护。
-            6. **其他优化**：进行了一些特性优化，以提高性能和可用性。
+            1. **修复小米 14 之后机型 fastboot 无法刷入 super 的问题**
+            2. **调整 super 的额外空间大小**：super 的额外空间大小调整为200MB，不再为1GB。
+            3. **警告**：所有 Android 15 涉及 Apktool 的修改会导致开机异常，现在不要使用与 Apktool 修改有关的内容，建议使用 MT 管理器修改。
 
             ## Release Notes
 
             ### New Features
-            1. **Extracting ext partition files now requires ROOT permissions**: The extraction of ext partition files has been updated and now requires ROOT access.
-            2. **ext4 packaging update**: The packaging method for ext4 partitions has been changed to use `mke2fs` and `e2fsdroid`, and is now supported only on Android 10 and higher.
-            3. **Loading animation for super.img packaging**: A loading animation has been added when packaging `super.img`.
-            4. **No longer supporting ext and f2fs sparse format packaging**: Support for packing ext and f2fs sparse formats has been removed.
-            5. **Separation of SELinux configuration and context update logic**: The logic for updating SELinux configurations and contexts has been separated from the packaging logic for better readability and maintenance.
-            6. **Other optimizations**: Several feature optimizations have been made to improve performance and usability.
+            1. **Fixed fastboot flashing issue for super on Xiaomi 14 and later models**
+            2. **Adjusted extra space size for super**: The extra space size for super has been adjusted to 200MB, no longer 1GB.
+            3. **Warning**: All modifications involving Apktool on Android 15 will cause boot issues. Avoid using Apktool-related modifications for now; consider using MT Manager for modifications.
 
       - name: Archive project
         run: zip -r UY-Sct_${{ env.VERSION }}.zip .
